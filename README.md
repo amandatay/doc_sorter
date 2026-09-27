@@ -5,7 +5,7 @@ named PDFs. All processing happens on-device — photos never leave the device.
 
 ## Install on Android
 
-1. Open Chrome and visit: `https://<your-github-username>.github.io/doc_sorter/`
+1. Open Chrome and visit: `https://amandatay.github.io/doc_sorter/`
 2. Tap the three-dot menu → **Add to Home screen**
 3. The app installs and works fully offline from that point on.
 
@@ -30,7 +30,7 @@ node --test tests/
 1. Create a repo named `doc_sorter` on GitHub.
 2. Push the `main` branch.
 3. In repo Settings → Pages → Source: **Deploy from branch** → `main` → `/ (root)`.
-4. The app is live at `https://<your-github-username>.github.io/doc_sorter/`.
+4. The app is live at `https://amandatay.github.io/doc_sorter/`.
 
 ## Project layout
 
