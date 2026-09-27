@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- CSP: self + inline scripts/styles + blob:/data: images. No external connects. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'">
+  <title>DocSorter</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- ============================================================
+       M0: App shell styles
+       Portrait layout, 44px min tap targets, one-handed use.
+       ============================================================ -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #202124;
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      /* Respect iOS notch / Android gesture bar */
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    /* ---- Screen container ---- */
+    #screen-container {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ---- Bottom navigation ---- */
+    #bottom-nav {
+      display: flex;
+      background: #fff;
+      border-top: 1px solid #e0e0e0;
+      box-shadow: 0 -2px 6px rgba(0, 0, 0, .08);
+      /* Keep nav above any overscroll */
+      position: relative;
+      z-index: 10;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      /* 56px satisfies the 44px minimum tap target */
+      min-height: 56px;
+      padding: 6px 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      color: #5f6368;
+      letter-spacing: .3px;
+      -webkit-tap-highlight-color: transparent;
+      transition: color .15s;
+    }
+
+    .nav-btn.active { color: #1a73e8; }
+
+    .nav-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    /* ---- Placeholder content (removed each milestone) ---- */
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      padding: 40px 24px;
+      text-align: center;
+      color: #80868b;
+      gap: 12px;
+    }
+
+    .placeholder .placeholder-icon { font-size: 48px; }
+    .placeholder h2 { font-size: 20px; font-weight: 500; color: #3c4043; }
+    .placeholder p  { font-size: 14px; line-height: 1.5; max-width: 260px; }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     M0: App shell — bottom nav + placeholder screens
+     Real screen content is added milestone by milestone.
+     ============================================================ -->
+<div id="app">
+
+  <div id="screen-container">
+
+    <!-- ============================================================
+         Documents screen (M1+)
+         ============================================================ -->
+    <div id="screen-documents" class="screen active" role="main" aria-label="Documents">
+      <div class="placeholder">
+        <div class="placeholder-icon" aria-hidden="true">📄</div>
+        <h2>Documents</h2>
+        <p>Your saved documents will appear here.</p>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         Inbox screen (M2+)
+         ============================================================ -->
+    <div id="screen-inbox" class="screen" role="main" aria-label="Inbox">
+      <div class="placeholder">
+        <div class="placeholder-icon" aria-hidden="true">📥</div>
+        <h2>Inbox</h2>
+        <p>Import photos here to sort them into documents.</p>
+      </div>
+    </div>
+
+  </div><!-- /screen-container -->
+
+  <!-- Bottom navigation -->
+  <nav id="bottom-nav" aria-label="Main navigation">
+    <button class="nav-btn active" data-screen="documents" aria-current="page">
+      <span class="nav-icon" aria-hidden="true">📄</span>
+      <span>Documents</span>
+    </button>
+    <button class="nav-btn" data-screen="inbox" aria-current="false">
+      <span class="nav-icon" aria-hidden="true">📥</span>
+      <span>Inbox</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<script src="core.js"></script>
+
+<!-- ============================================================
+     M0: Navigation + service worker registration
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ---- Bottom nav tab switching ---- */
+  var screens = document.querySelectorAll('.screen');
+  var navBtns = document.querySelectorAll('.nav-btn');
+
+  function showScreen(name) {
+    screens.forEach(function (s) {
+      s.classList.toggle('active', s.id === 'screen-' + name);
+    });
+    navBtns.forEach(function (b) {
+      var active = b.dataset.screen === name;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-current', active ? 'page' : 'false');
+    });
+  }
+
+  navBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { showScreen(btn.dataset.screen); });
+  });
+
+  /* ---- Service worker ---- */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function (err) {
+      console.warn('Service worker registration failed:', err);
+    });
+  }
+}());
+</script>
+
+</body>
+</html>
