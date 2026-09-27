@@ -1,6 +1,6 @@
 # Progress
 
-## Current milestone: M0 — Scaffold & deploy (status: Awaiting device test)
+## Current milestone: M1 — Data model & storage (status: Planning)
 
 ## Log
 
@@ -13,10 +13,10 @@
 
 ## Manual test checklist — M0
 
-- [ ] Visit `https://amandatay.github.io/doc_sorter/` in Android Chrome → app loads with Documents and Inbox screens
-- [ ] Browser shows install prompt → tap **Add to Home screen** → installs successfully
-- [ ] Launch from home screen → opens as standalone (no browser address bar)
-- [ ] Turn on airplane mode → reopen app → still loads (offline cache working)
-- [ ] Tap **Inbox** in bottom nav → Inbox screen shown; tap **Documents** → Documents screen shown
+- [x] Visit `https://amandatay.github.io/doc_sorter/` in Android Chrome → app loads with Documents and Inbox screens
+- [x] Browser shows install prompt → install as app → installs successfully (use three-dot menu → "Install app", not "Add to Home screen" shortcut)
+- [x] Launch from home screen → opens as standalone (no browser address bar)
+- [x] Turn on airplane mode → reopen app → still loads (offline cache working)
+- [x] Tap **Inbox** in bottom nav → Inbox screen shown; tap **Documents** → Documents screen shown
 - [ ] No JS errors in `chrome://inspect` DevTools console
 - [ ] In DevTools → Application → Service Workers: SW is registered and active
