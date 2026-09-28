@@ -33,8 +33,8 @@ const Core = {
    * @param {string} p.mime
    * @param {string} p.capturedAt  - local time, no TZ: "YYYY-MM-DDTHH:MM:SS"
    * @param {'exif'|'lastModified'} p.capturedAtSource
-   * @param {number} p.width  - pixels before rotation
-   * @param {number} p.height - pixels before rotation
+   * @param {number} p.width  - pixels (post-EXIF-orientation, pre-user-rotation)
+   * @param {number} p.height - pixels (post-EXIF-orientation, pre-user-rotation)
    */
   createPage({ originalName, mime, capturedAt, capturedAtSource, width, height }) {
     return { originalName, mime, capturedAt, capturedAtSource, width, height, rotation: 0 };
@@ -162,6 +162,47 @@ const Core = {
     const v = state && state.schemaVersion;
     if (v === 1) return state;
     throw new Error(`Unsupported schemaVersion: ${v}`);
+  },
+
+  /**
+   * Formats a Date as a local datetime string "YYYY-MM-DDTHH:MM:SS" with no timezone.
+   * Matches the EXIF DateTimeOriginal format and is used for capturedAt values.
+   * @param {Date} date
+   * @returns {string}
+   */
+  formatLocalDateTime(date) {
+    const p = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}` +
+           `T${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`;
+  },
+
+  /**
+   * Sorts an array of [pageId, page] pairs by capturedAt ascending,
+   * with originalName (natural sort) as the tiebreaker.
+   * Returns a new array; does not mutate the input.
+   * @param {Array<[string, object]>} entries
+   * @returns {Array<[string, object]>}
+   */
+  sortPageEntries(entries) {
+    return [...entries].sort((a, b) => {
+      const ta = a[1].capturedAt, tb = b[1].capturedAt;
+      if (ta < tb) return -1;
+      if (ta > tb) return  1;
+      return a[1].originalName.localeCompare(
+        b[1].originalName, undefined, { numeric: true, sensitivity: 'base' }
+      );
+    });
+  },
+
+  /**
+   * Returns the inbox pages as sorted [pageId, page] pairs (capturedAt asc, name tiebreaker).
+   * @param {object} state
+   * @returns {Array<[string, object]>}
+   */
+  sortedInboxEntries(state) {
+    return this.sortPageEntries(
+      (state.inbox || []).map(id => [id, state.pages[id]])
+    );
   },
 
 };

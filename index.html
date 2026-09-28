@@ -77,10 +77,7 @@
 
     .nav-btn.active { color: #1a73e8; }
 
-    .nav-icon {
-      font-size: 22px;
-      line-height: 1;
-    }
+    .nav-icon { font-size: 22px; line-height: 1; }
 
     .placeholder {
       display: flex;
@@ -103,7 +100,6 @@
        M1: App header + settings bottom sheet styles
        ============================================================ -->
   <style>
-    /* ---- App header ---- */
     #app-header {
       display: flex;
       align-items: center;
@@ -118,40 +114,24 @@
       z-index: 10;
     }
 
-    #app-title {
-      font-size: 20px;
-      font-weight: 500;
-      letter-spacing: .15px;
-    }
+    #app-title { font-size: 20px; font-weight: 500; letter-spacing: .15px; }
 
     #btn-settings {
-      width: 44px;
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: none;
-      border: none;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 22px;
-      cursor: pointer;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: 50%;
+      color: #fff; font-size: 22px; cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* ---- Settings bottom sheet ---- */
     #settings-backdrop {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(0, 0, 0, .4);
       z-index: 100;
     }
 
     #settings-sheet {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      position: fixed; bottom: 0; left: 0; right: 0;
       background: #fff;
       border-radius: 16px 16px 0 0;
       padding: 12px 24px max(24px, env(safe-area-inset-bottom, 0px));
@@ -162,56 +142,106 @@
     }
 
     .sheet-handle {
-      width: 36px;
-      height: 4px;
-      background: #dadce0;
-      border-radius: 2px;
+      width: 36px; height: 4px;
+      background: #dadce0; border-radius: 2px;
       margin: 0 auto 20px;
     }
 
-    .sheet-title {
-      font-size: 18px;
-      font-weight: 500;
-      color: #202124;
-      margin-bottom: 8px;
-    }
+    .sheet-title { font-size: 18px; font-weight: 500; color: #202124; margin-bottom: 8px; }
 
     .settings-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: flex; justify-content: space-between; align-items: center;
       padding: 14px 0;
       border-bottom: 1px solid #f1f3f4;
     }
-
     .settings-row:last-of-type { border-bottom: none; }
 
-    .settings-label {
-      font-size: 14px;
-      color: #5f6368;
-    }
-
-    .settings-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: #202124;
-      text-align: right;
-    }
+    .settings-label { font-size: 14px; color: #5f6368; }
+    .settings-value { font-size: 14px; font-weight: 500; color: #202124; text-align: right; }
 
     #btn-settings-close {
-      display: block;
-      width: 100%;
-      margin-top: 20px;
-      padding: 14px;
-      background: #1a73e8;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      min-height: 48px;
+      display: block; width: 100%; margin-top: 20px;
+      padding: 14px; background: #1a73e8; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 500; cursor: pointer; min-height: 48px;
       -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+
+  <!-- ============================================================
+       M2: Inbox screen styles — import bar, progress, thumbnail grid
+       ============================================================ -->
+  <style>
+    /* ---- Import bar ---- */
+    #inbox-import-bar {
+      padding: 12px 16px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0;
+    }
+
+    #btn-import {
+      display: block; width: 100%;
+      padding: 14px; background: #1a73e8; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 500; cursor: pointer; min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ---- Progress bar ---- */
+    #import-progress {
+      padding: 10px 16px 12px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    #progress-track {
+      height: 4px; background: #e8eaed;
+      border-radius: 2px; overflow: hidden;
+    }
+
+    #progress-fill {
+      height: 100%; width: 0%;
+      background: #1a73e8;
+      border-radius: 2px;
+      transition: width .1s linear;
+    }
+
+    #progress-text {
+      font-size: 12px; color: #5f6368;
+      margin-top: 6px; text-align: center;
+    }
+
+    /* ---- Thumbnail grid ---- */
+    #inbox-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      padding: 2px;
+    }
+
+    .thumb-cell {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      background: #e8eaed;
+      overflow: hidden;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .thumb-cell img {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+
+    /* "~" badge: timestamp came from file modification date, not EXIF */
+    .thumb-badge {
+      position: absolute; top: 4px; left: 4px;
+      background: rgba(0, 0, 0, .55);
+      color: #fff; font-size: 11px; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px;
+      line-height: 1.6;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -244,14 +274,30 @@
     </div>
 
     <!-- ============================================================
-         Inbox screen (M2+)
+         Inbox screen (M2)
+         Import photos, view thumbnails sorted by capture time.
          ============================================================ -->
     <div id="screen-inbox" class="screen" role="main" aria-label="Inbox">
-      <div class="placeholder">
-        <div class="placeholder-icon" aria-hidden="true">📥</div>
-        <h2>Inbox</h2>
-        <p>Import photos here to sort them into documents.</p>
+
+      <div id="inbox-import-bar">
+        <button id="btn-import">+ Import photos</button>
+        <input id="file-input" type="file" accept="image/*" multiple
+               hidden aria-hidden="true" tabindex="-1">
       </div>
+
+      <div id="import-progress" hidden>
+        <div id="progress-track"><div id="progress-fill"></div></div>
+        <p id="progress-text" aria-live="polite"></p>
+      </div>
+
+      <div id="inbox-grid" role="list" aria-label="Imported pages"></div>
+
+      <div id="inbox-empty" class="placeholder">
+        <div class="placeholder-icon" aria-hidden="true">📥</div>
+        <h2>Inbox is empty</h2>
+        <p>Tap <strong>Import photos</strong> to add photos from your gallery.</p>
+      </div>
+
     </div>
 
   </div><!-- /screen-container -->
@@ -292,6 +338,7 @@
 </div>
 
 <script src="core.js"></script>
+<script src="vendor/exifr/exifr.umd.js"></script>
 
 <!-- ============================================================
      M0: Navigation + service worker registration
@@ -378,36 +425,28 @@ const App = {
 };
 
 async function initApp() {
-  // Load or create state
   try {
     await DB.open();
-    let saved = await DB.loadState();
-    if (saved) {
-      App.state = Core.applyMigrations(saved);
-    } else {
-      App.state = Core.createState();
-    }
-    const errors = Core.validateState(App.state);
-    if (errors.length) console.warn('State validation warnings:', errors);
+    const saved = await DB.loadState();
+    App.state = saved ? Core.applyMigrations(saved) : Core.createState();
+    const errs = Core.validateState(App.state);
+    if (errs.length) console.warn('State validation warnings:', errs);
     await DB.saveState(App.state);
   } catch (err) {
     console.error('Storage init failed, running in-memory only:', err);
     App.state = Core.createState();
   }
 
-  // Request persistent storage so the OS doesn't evict our data
   if (navigator.storage && navigator.storage.persist) {
-    try { App.persisted = await navigator.storage.persist(); }
-    catch (e) { /* not supported */ }
+    try { App.persisted = await navigator.storage.persist(); } catch (e) {}
   }
 
-  // Get storage usage estimate
   if (navigator.storage && navigator.storage.estimate) {
-    try { App.storageEstimate = await navigator.storage.estimate(); }
-    catch (e) { /* not supported */ }
+    try { App.storageEstimate = await navigator.storage.estimate(); } catch (e) {}
   }
 
   renderSettings();
+  await renderInbox(); // renderInbox is defined in the M2 block below
 }
 
 function renderSettings() {
@@ -427,7 +466,7 @@ function renderSettings() {
   }
 }
 
-initApp();
+initApp(); // starts async; M2 functions are defined before any await resolves
 </script>
 
 <!-- ============================================================
@@ -440,26 +479,188 @@ initApp();
   const btnOpen  = document.getElementById('btn-settings');
   const btnClose = document.getElementById('btn-settings-close');
 
-  function openSettings() {
-    backdrop.hidden = false;
-    sheet.hidden    = false;
-    btnClose.focus();
-  }
-
-  function closeSettings() {
-    backdrop.hidden = true;
-    sheet.hidden    = true;
-    btnOpen.focus();
-  }
+  function openSettings()  { backdrop.hidden = false; sheet.hidden = false; btnClose.focus(); }
+  function closeSettings() { backdrop.hidden = true;  sheet.hidden = true;  btnOpen.focus(); }
 
   btnOpen.addEventListener('click', openSettings);
   btnClose.addEventListener('click', closeSettings);
   backdrop.addEventListener('click', closeSettings);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) closeSettings(); });
+}());
+</script>
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !sheet.hidden) closeSettings();
+<!-- ============================================================
+     M2: Gallery import — EXIF reading, thumbnail generation, progress
+     Processes files one at a time, yielding between each to stay responsive.
+     ============================================================ -->
+<script>
+const THUMB_MAX_LONG_EDGE = 400;
+const THUMB_QUALITY       = 0.8;
+const SAVE_INTERVAL       = 10; // persist state every N files
+
+function showImportProgress(done, total) {
+  const bar = document.getElementById('import-progress');
+  bar.hidden = false;
+  document.getElementById('progress-fill').style.width = (done / total * 100) + '%';
+  document.getElementById('progress-text').textContent =
+    done < total ? 'Importing ' + done + ' of ' + total + '…' : 'Finishing up…';
+}
+
+function hideImportProgress() {
+  document.getElementById('import-progress').hidden = true;
+  document.getElementById('progress-fill').style.width = '0%';
+}
+
+async function generateThumbnail(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode(); // throws for HEIC and other unsupported formats
+    const { naturalWidth: w, naturalHeight: h } = img;
+    const scale = Math.min(THUMB_MAX_LONG_EDGE / w, THUMB_MAX_LONG_EDGE / h, 1);
+    const tw = Math.round(w * scale);
+    const th = Math.round(h * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = tw; canvas.height = th;
+    canvas.getContext('2d').drawImage(img, 0, 0, tw, th);
+    const thumbBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', THUMB_QUALITY));
+    return { thumbBlob, width: w, height: h };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function importOneFile(file) {
+  let capturedAt, capturedAtSource;
+  try {
+    const exifData = await exifr.parse(file);
+    if (exifData && exifData.DateTimeOriginal instanceof Date) {
+      capturedAt = Core.formatLocalDateTime(exifData.DateTimeOriginal);
+      capturedAtSource = 'exif';
+    }
+  } catch (e) { /* EXIF unavailable — fall through to lastModified */ }
+
+  if (!capturedAt) {
+    capturedAt = Core.formatLocalDateTime(new Date(file.lastModified));
+    capturedAtSource = 'lastModified';
+  }
+
+  const { thumbBlob, width, height } = await generateThumbnail(file);
+
+  const pageId = Core.generateId();
+  const page   = Core.createPage({
+    originalName: file.name,
+    mime: file.type || 'image/jpeg',
+    capturedAt, capturedAtSource, width, height,
+  });
+
+  await DB.saveBlob(pageId, file);
+  await DB.saveBlob(pageId + ':thumb', thumbBlob);
+
+  App.state = Core.addPageToInbox(App.state, pageId, page);
+}
+
+async function handleImport(fileList) {
+  const files = Array.from(fileList);
+  if (!files.length) return;
+
+  let failCount = 0;
+  showImportProgress(0, files.length);
+
+  for (let i = 0; i < files.length; i++) {
+    try {
+      await importOneFile(files[i]);
+    } catch (err) {
+      console.warn('Could not import', files[i].name, '—', err.message);
+      failCount++;
+    }
+    showImportProgress(i + 1, files.length);
+    if ((i + 1) % SAVE_INTERVAL === 0) await DB.saveState(App.state);
+    await new Promise(r => setTimeout(r, 0)); // yield to keep UI responsive
+  }
+
+  await DB.saveState(App.state);
+  hideImportProgress();
+  await renderInbox();
+
+  if (failCount) {
+    alert(failCount + ' photo' + (failCount === 1 ? '' : 's') +
+      ' could not be imported. The format may not be supported by your browser (e.g. HEIC).');
+  }
+}
+
+(function () {
+  const input = document.getElementById('file-input');
+  document.getElementById('btn-import').addEventListener('click', () => input.click());
+  input.addEventListener('change', async e => {
+    const files = e.target.files;
+    e.target.value = ''; // reset so the same files can be selected again
+    await handleImport(files);
   });
 }());
+</script>
+
+<!-- ============================================================
+     M2: Inbox rendering — displays thumbnails sorted by capture time
+     ============================================================ -->
+<script>
+let _inboxObjectURLs = []; // tracked so we can revoke when re-rendering
+
+function revokeInboxURLs() {
+  _inboxObjectURLs.forEach(u => URL.revokeObjectURL(u));
+  _inboxObjectURLs = [];
+}
+
+async function renderInbox() {
+  const grid  = document.getElementById('inbox-grid');
+  const empty = document.getElementById('inbox-empty');
+
+  revokeInboxURLs();
+  grid.innerHTML = '';
+
+  const entries = Core.sortedInboxEntries(App.state);
+
+  if (!entries.length) {
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+
+  // Create all cells synchronously first so the grid appears immediately
+  const cells = entries.map(([pageId, page], i) => {
+    const cell = document.createElement('div');
+    cell.className = 'thumb-cell';
+    cell.dataset.pageId = pageId;
+    cell.setAttribute('role', 'listitem');
+
+    const img = document.createElement('img');
+    img.alt = 'Page ' + (i + 1);
+
+    if (page.capturedAtSource === 'lastModified') {
+      const badge = document.createElement('span');
+      badge.className = 'thumb-badge';
+      badge.setAttribute('aria-label', 'estimated timestamp');
+      badge.title = 'Timestamp from file date — camera time not available';
+      badge.textContent = '~';
+      cell.appendChild(badge);
+    }
+
+    cell.appendChild(img);
+    grid.appendChild(cell);
+    return { img, pageId };
+  });
+
+  // Load all thumbnails from IndexedDB concurrently
+  await Promise.all(cells.map(async ({ img, pageId }) => {
+    const blob = await DB.loadBlob(pageId + ':thumb');
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      _inboxObjectURLs.push(url);
+      img.src = url;
+    }
+  }));
+}
 </script>
 
 </body>

@@ -18,6 +18,19 @@
 - **Alternatives**: Cache API (less suited to structured key-value data); localStorage (5 MB limit, synchronous only).
 - **Consequences**: Requires async API throughout; must call `navigator.storage.persist()` to reduce eviction risk.
 
+## D007 — EXIF orientation: rely on Chrome auto-correction (20260928)
+- **Context**: Android photos often have EXIF Orientation tags. The spec says "apply EXIF Orientation only if the browser hasn't already." Canvas drawImage uses the rendered img element which Chrome auto-corrects.
+- **Decision**: Rely on Chrome's auto-correction of EXIF orientation in img elements. The canvas thumbnail is drawn from the auto-corrected img, so it will be correctly oriented. Store `width`/`height` as img.naturalWidth/naturalHeight (post-correction dimensions).
+- **Verification needed**: Confirm on a real Android device that portrait photos appear upright in the thumbnail grid. Record result after M2 device test.
+- **Alternatives**: Manually apply EXIF rotation on canvas (complex, requires reading Orientation tag separately). Rejected because Chrome handles this for us.
+- **Consequences**: If Chrome does NOT auto-correct (rare, very old Android), portrait photos may appear sideways. This will be caught in the M2 device test.
+
+## D006 — exifr 7.1.3 lite UMD build (20260928)
+- **Context**: Need to read DateTimeOriginal EXIF tag from imported photos to sort and group them accurately.
+- **Decision**: exifr 7.1.3, lite UMD build (`lite.umd.cjs`, ~45KB). Reads basic JPEG EXIF. Vendored at `vendor/exifr/exifr.umd.js`.
+- **Alternatives**: Full build (~120KB, includes IPTC/XMP) — overkill since we only need DateTimeOriginal. Manual EXIF parsing — unnecessary complexity.
+- **Consequences**: Files that exifr can't parse (some edge cases) silently fall back to lastModified with a "~" indicator on the thumbnail. Acceptable.
+
 ## D005 — node --test invocation (20260927)
 - **Context**: CLAUDE.md originally listed `node --test tests/` as the test command. This fails with "Cannot find module" on Node 26 because the directory path is interpreted as a module, not a glob.
 - **Decision**: Use `node --test` with no arguments; Node auto-discovers `**/*.test.js` files.

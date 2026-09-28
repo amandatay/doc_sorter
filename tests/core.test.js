@@ -93,8 +93,7 @@ test('createDocument fills in defaults', () => {
 });
 
 test('createDocument works with no arguments', () => {
-  const d = Core.createDocument();
-  assert.equal(d.title, 'Untitled');
+  assert.equal(Core.createDocument().title, 'Untitled');
 });
 
 test('createDocument pageIds is a copy (not a reference)', () => {
@@ -125,10 +124,8 @@ test('addPageToInbox does not mutate the original state', () => {
 
 test('addPageToInbox preserves existing pages', () => {
   let state = Core.createState();
-  const id1 = Core.generateId();
-  const id2 = Core.generateId();
-  state = Core.addPageToInbox(state, id1, makePage());
-  state = Core.addPageToInbox(state, id2, makePage());
+  state = Core.addPageToInbox(state, Core.generateId(), makePage());
+  state = Core.addPageToInbox(state, Core.generateId(), makePage());
   assert.equal(state.inbox.length, 2);
   assert.equal(Object.keys(state.pages).length, 2);
 });
@@ -157,7 +154,7 @@ test('validateState catches duplicate pageId in inbox', () => {
   const s = Core.createState();
   const id = Core.generateId();
   s.pages[id] = makePage();
-  s.inbox.push(id, id); // added twice
+  s.inbox.push(id, id);
   assert.ok(Core.validateState(s).length > 0);
 });
 
@@ -186,10 +183,10 @@ test('validateState catches dangling id in document', () => {
   assert.ok(Core.validateState(s).length > 0);
 });
 
-test('validateState catches page in pages but not referenced anywhere', () => {
+test('validateState catches page not referenced anywhere', () => {
   const s = Core.createState();
   const id = Core.generateId();
-  s.pages[id] = makePage(); // not added to inbox or any doc
+  s.pages[id] = makePage();
   assert.ok(Core.validateState(s).some(e => e.includes(id)));
 });
 
@@ -236,4 +233,82 @@ test('applyMigrations throws on unknown schemaVersion', () => {
 
 test('applyMigrations throws on missing schemaVersion', () => {
   assert.throws(() => Core.applyMigrations({}), /schemaVersion/);
+});
+
+// ── formatLocalDateTime ─────────────────────────────────────────────────────
+
+test('formatLocalDateTime formats a date correctly', () => {
+  const d = new Date(2026, 8, 27, 14, 3, 22); // Sep 27 2026, 14:03:22 local
+  assert.equal(Core.formatLocalDateTime(d), '2026-09-27T14:03:22');
+});
+
+test('formatLocalDateTime zero-pads single-digit fields', () => {
+  const d = new Date(2026, 0, 5, 9, 7, 3); // Jan 5 2026, 09:07:03
+  assert.equal(Core.formatLocalDateTime(d), '2026-01-05T09:07:03');
+});
+
+// ── sortPageEntries ─────────────────────────────────────────────────────────
+
+test('sortPageEntries returns empty for empty input', () => {
+  assert.deepEqual(Core.sortPageEntries([]), []);
+});
+
+test('sortPageEntries single entry returns as-is', () => {
+  const entry = ['id1', makePage({ capturedAt: '2026-09-27T10:00:00' })];
+  assert.deepEqual(Core.sortPageEntries([entry]), [entry]);
+});
+
+test('sortPageEntries sorts by capturedAt ascending', () => {
+  const a = ['a', makePage({ capturedAt: '2026-09-27T10:00:00', originalName: 'a.jpg' })];
+  const b = ['b', makePage({ capturedAt: '2026-09-27T09:00:00', originalName: 'b.jpg' })];
+  const c = ['c', makePage({ capturedAt: '2026-09-27T11:00:00', originalName: 'c.jpg' })];
+  const sorted = Core.sortPageEntries([a, b, c]);
+  assert.equal(sorted[0][0], 'b');
+  assert.equal(sorted[1][0], 'a');
+  assert.equal(sorted[2][0], 'c');
+});
+
+test('sortPageEntries uses originalName as tiebreaker for identical timestamps', () => {
+  const ts = '2026-09-27T10:00:00';
+  const a = ['a', makePage({ capturedAt: ts, originalName: 'IMG_10.jpg' })];
+  const b = ['b', makePage({ capturedAt: ts, originalName: 'IMG_9.jpg' })];
+  const c = ['c', makePage({ capturedAt: ts, originalName: 'IMG_2.jpg' })];
+  const sorted = Core.sortPageEntries([a, b, c]);
+  // Natural sort: IMG_2 < IMG_9 < IMG_10
+  assert.equal(sorted[0][1].originalName, 'IMG_2.jpg');
+  assert.equal(sorted[1][1].originalName, 'IMG_9.jpg');
+  assert.equal(sorted[2][1].originalName, 'IMG_10.jpg');
+});
+
+test('sortPageEntries does not mutate the input array', () => {
+  const ts = '2026-09-27T10:00:00';
+  const a = ['a', makePage({ capturedAt: ts, originalName: 'b.jpg' })];
+  const b = ['b', makePage({ capturedAt: '2026-09-27T09:00:00', originalName: 'a.jpg' })];
+  const input = [a, b];
+  Core.sortPageEntries(input);
+  assert.equal(input[0][0], 'a'); // original order unchanged
+});
+
+test('sortPageEntries handles mix of exif and lastModified sources', () => {
+  const a = ['a', makePage({ capturedAt: '2026-09-27T10:00:00', capturedAtSource: 'exif' })];
+  const b = ['b', makePage({ capturedAt: '2026-09-27T09:00:00', capturedAtSource: 'lastModified' })];
+  const sorted = Core.sortPageEntries([a, b]);
+  assert.equal(sorted[0][0], 'b'); // earlier time first, regardless of source
+});
+
+// ── sortedInboxEntries ──────────────────────────────────────────────────────
+
+test('sortedInboxEntries returns inbox sorted by time', () => {
+  let state = Core.createState();
+  const id1 = Core.generateId();
+  const id2 = Core.generateId();
+  state = Core.addPageToInbox(state, id1, makePage({ capturedAt: '2026-09-27T12:00:00' }));
+  state = Core.addPageToInbox(state, id2, makePage({ capturedAt: '2026-09-27T08:00:00' }));
+  const entries = Core.sortedInboxEntries(state);
+  assert.equal(entries[0][0], id2); // earlier time first
+  assert.equal(entries[1][0], id1);
+});
+
+test('sortedInboxEntries returns empty for empty inbox', () => {
+  assert.deepEqual(Core.sortedInboxEntries(Core.createState()), []);
 });

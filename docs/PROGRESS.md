@@ -1,8 +1,15 @@
 # Progress
 
-## Current milestone: M1 — Data model & storage (status: Awaiting device test)
+## Current milestone: M2 — Import & timestamps (status: In progress)
 
 ## Log
+
+### 20260928 — M2 import & timestamps
+- **Did**: Gallery import (multiple files). EXIF DateTimeOriginal via exifr 7.1.3 lite, with lastModified fallback and "~" badge on thumbnails. Thumbnail generation (canvas, 400px long edge, JPEG 0.8). Progress bar during import (yields every file to stay responsive). HEIC/unsupported format error alert. Inbox renders thumbnails sorted by capturedAt. `sortPageEntries`, `sortedInboxEntries`, `formatLocalDateTime` added to core.js. 40 unit tests (all passing).
+- **Files**: `core.js`, `tests/core.test.js`, `index.html`, `sw.js` (CACHE_VERSION → 3), `vendor/exifr/exifr.umd.js`, `docs/PROGRESS.md`, `docs/DECISIONS.md`, `docs/CHANGELOG.md`
+- **Tested**: `node --test` → 40/40. Manual checklist below to run on Android.
+- **Open issues**: D007 (EXIF orientation) needs verification on real device.
+- **Next**: M3 — Viewer (pinch, pan, swipe, rotate).
 
 ### 20260927 — M1 data model & storage
 - **Did**: Added all Core model helpers (`createState`, `createPage`, `createDocument`, `addPageToInbox`, `validateState`, `isValidDate`, `applyMigrations`) with full invariant checking. Added IndexedDB wrapper (`DB`) with `state` and `blobs` stores. App now loads/saves state on startup and calls `navigator.storage.persist()`. Settings bottom sheet shows persistence status and storage estimate. 30 unit tests, all passing.
@@ -17,6 +24,18 @@
 - **Tested**: `node --test` passes (1 smoke test). Manual checklist below to run on Android.
 - **Open issues**: Icons are solid-color placeholders — replace with a real icon before M9.
 - **Next**: M1 — Data model & storage.
+
+## Manual test checklist — M2
+
+- [ ] Open app → tap Inbox tab → "Inbox is empty" placeholder shown, "Import photos" button visible
+- [ ] Tap "Import photos" → gallery opens, can select multiple photos
+- [ ] Select 3–5 photos → progress bar appears, then thumbnails appear in a grid
+- [ ] Thumbnails are sorted by capture time (oldest first)
+- [ ] Photos without EXIF data show a "~" badge (test by importing a screenshot)
+- [ ] Close app fully → reopen → thumbnails are still there (persisted through IndexedDB)
+- [ ] Import 20+ photos → app stays responsive during import, progress counter updates
+- [ ] Portrait photos appear upright (not sideways) → confirms EXIF orientation auto-correction (record finding in DECISIONS.md D007)
+- [ ] Try importing a HEIC photo (if available) → either imports fine or shows a clear error message
 
 ## Manual test checklist — M1
 

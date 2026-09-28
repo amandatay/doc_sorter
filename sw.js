@@ -1,7 +1,7 @@
 /* Service worker — offline cache + share-target handler (M9).
  * Bump CACHE_VERSION whenever any cached file changes. */
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const CACHE_NAME = 'docsorter-v' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
@@ -12,6 +12,7 @@ const PRECACHE_URLS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable.png',
+  './vendor/exifr/exifr.umd.js',
 ];
 
 self.addEventListener('install', (event) => {
