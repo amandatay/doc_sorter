@@ -2189,7 +2189,9 @@ async function renderInbox() {
 
   // ── PDF export ───────────────────────────────────────────────────────────
 
-  async function renderPageToJpeg(pageId) {
+  // Returns {canvas, width, height} — canvas has the page drawn at export resolution
+  // with rotation applied. Pass canvas directly to pdf.addImage (blob URLs don't work).
+  async function renderPageToCanvas(pageId) {
     const blob = await DB.loadBlob(pageId);
     if (!blob) throw new Error('Missing blob for page ' + pageId);
 
@@ -2199,37 +2201,36 @@ async function renderInbox() {
       img.src = url;
       await img.decode();
 
-      const page     = App.state.pages[pageId];
-      const rotation = page ? page.rotation : 0;
+      const page      = App.state.pages[pageId];
+      const rotation  = page ? page.rotation : 0;
+      const rotated90 = rotation === 90 || rotation === 270;
+      const srcW      = img.naturalWidth;
+      const srcH      = img.naturalHeight;
 
-      // After user rotation, effective dimensions may swap
-      const rotated90  = rotation === 90 || rotation === 270;
-      const srcW       = img.naturalWidth;
-      const srcH       = img.naturalHeight;
+      // After user rotation the effective W/H may swap
       const effectiveW = rotated90 ? srcH : srcW;
       const effectiveH = rotated90 ? srcW : srcH;
 
       // Downscale so long edge ≤ EXPORT_MAX_LONG_EDGE
-      const scale  = Math.min(1, EXPORT_MAX_LONG_EDGE / Math.max(effectiveW, effectiveH));
-      const outW   = Math.round(effectiveW * scale);
-      const outH   = Math.round(effectiveH * scale);
+      const scale = Math.min(1, EXPORT_MAX_LONG_EDGE / Math.max(effectiveW, effectiveH));
+      const outW  = Math.round(effectiveW * scale);
+      const outH  = Math.round(effectiveH * scale);
 
-      const canvas = document.createElement('canvas');
+      const canvas  = document.createElement('canvas');
       canvas.width  = outW;
       canvas.height = outH;
       const ctx = canvas.getContext('2d');
 
-      // Apply rotation transform on canvas before drawing
       ctx.save();
       ctx.translate(outW / 2, outH / 2);
       ctx.rotate(rotation * Math.PI / 180);
-      // When rotated, draw dimensions are swapped back to original orientation
+      // Draw dimensions are in the pre-rotation coordinate system
       const drawW = rotated90 ? outH : outW;
       const drawH = rotated90 ? outW : outH;
       ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
       ctx.restore();
 
-      return await new Promise(res => canvas.toBlob(res, 'image/jpeg', EXPORT_JPEG_QUALITY));
+      return { canvas, width: outW, height: outH };
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -2241,7 +2242,6 @@ async function renderInbox() {
       return;
     }
 
-    // jsPDF is loaded as jspdf global; the constructor is jspdf.jsPDF
     const { jsPDF } = window.jspdf;
 
     exportOverlay.hidden = false;
@@ -2256,17 +2256,10 @@ async function renderInbox() {
         exportStatus.textContent = `Page ${i + 1} of ${doc.pageIds.length}…`;
         exportProgressFill.style.width = ((i / doc.pageIds.length) * 90) + '%';
 
-        const jpegBlob = await renderPageToJpeg(pageId);
-        const jpegUrl  = URL.createObjectURL(jpegBlob);
-        const img      = new Image();
-        img.src        = jpegUrl;
-        await img.decode();
+        const { canvas, width: imgW, height: imgH } = await renderPageToCanvas(pageId);
 
-        const imgW = img.naturalWidth;
-        const imgH = img.naturalHeight;
-
-        // A4 dimensions in mm
-        const A4_W = 210, A4_H = 297;
+        // A4 dimensions in mm; pick orientation to match image aspect
+        const A4_W  = 210, A4_H = 297;
         const orient = imgW >= imgH ? 'landscape' : 'portrait';
         const pageW  = orient === 'landscape' ? A4_H : A4_W;
         const pageH  = orient === 'landscape' ? A4_W : A4_H;
@@ -2277,7 +2270,7 @@ async function renderInbox() {
           pdf.addPage('a4', orient);
         }
 
-        // Fit image into page with margins, centred
+        // Fit image into page with 10 mm margins, centred
         const margin = 10;
         const maxW   = pageW - margin * 2;
         const maxH   = pageH - margin * 2;
@@ -2287,8 +2280,8 @@ async function renderInbox() {
         const x      = margin + (maxW - drawW) / 2;
         const y      = margin + (maxH - drawH) / 2;
 
-        pdf.addImage(jpegUrl, 'JPEG', x, y, drawW, drawH);
-        URL.revokeObjectURL(jpegUrl);
+        // Pass the canvas directly — jsPDF reads pixel data from it synchronously
+        pdf.addImage(canvas, 'JPEG', x, y, drawW, drawH, undefined, 'FAST');
       }
 
       exportStatus.textContent = 'Sharing…';
