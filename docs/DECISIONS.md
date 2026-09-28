@@ -31,6 +31,18 @@
 - **Alternatives**: Full build (~120KB, includes IPTC/XMP) — overkill since we only need DateTimeOriginal. Manual EXIF parsing — unnecessary complexity.
 - **Consequences**: Files that exifr can't parse (some edge cases) silently fall back to lastModified with a "~" indicator on the thumbnail. Acceptable.
 
+## D008 — jsPDF 2.5.2 UMD min build (20260928)
+- **Context**: Need to generate PDFs on-device for export. jsPDF is pre-approved in CLAUDE.md.
+- **Decision**: jsPDF 2.5.2, UMD minified build (`jspdf.umd.min.js`, ~366 KB). Exposes `window.jspdf`; constructor is `window.jspdf.jsPDF`. Vendored at `vendor/jspdf/jspdf.umd.min.js`.
+- **Alternatives**: Full (non-minified) build — larger with no benefit at runtime. ES module build — incompatible with no-bundler constraint (D001).
+- **Consequences**: ~366 KB added to first load; precached by service worker so subsequent loads are instant.
+
+## D009 — Share-target file queue via Cache API (20260928)
+- **Context**: Android share sheet sends files via POST to the service worker. The SW must stash them somewhere before redirecting to the app, which then reads them.
+- **Decision**: Store each shared file as a `Response` in a dedicated `docsorter-share-queue` Cache API cache. Key is `share-item-{timestamp}-{index}`. Custom `X-File-Name` header preserves the original filename. App drains and deletes the queue on startup when `?shared=1` is in the URL.
+- **Alternatives**: IndexedDB from sw.js (requires duplicating IDB open logic in sw.js); postMessage to the page (race condition if page not yet loaded).
+- **Consequences**: Cache API entries survive if the app crashes before draining — cleared on next startup. The `share-queue` cache is excluded from the activate cleanup loop.
+
 ## D005 — node --test invocation (20260927)
 - **Context**: CLAUDE.md originally listed `node --test tests/` as the test command. This fails with "Cannot find module" on Node 26 because the directory path is interpreted as a module, not a glob.
 - **Decision**: Use `node --test` with no arguments; Node auto-discovers `**/*.test.js` files.

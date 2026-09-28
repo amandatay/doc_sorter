@@ -1,8 +1,15 @@
 # Progress
 
-## Current milestone: M5+M7 — Reorder + Naming (status: In progress — awaiting device test)
+## Current milestone: M5+M7 — Reorder + Naming (status: Done ✓ — confirmed on device 20260928)
+## Next milestone: M8+M9 — PDF export + share target (status: In progress — awaiting device test)
 
 ## Log
+
+### 20260928 — M8+M9 PDF export + share target
+- **Did**: PDF export (📄 button in document detail) — jsPDF 2.5.2 UMD min, renders each page to JPEG (2000px long edge, JPEG 0.85), respects stored rotation, A4 with 10mm margins, shares via Web Share API (falls back to download). Share target (M9): sw.js now reads FormData files from POST, stashes each as a Response in `docsorter-share-queue` cache, redirects to app; app drains queue on startup when `?shared=1` in URL and imports to inbox. No new core.js functions needed. sw.js CACHE_VERSION → 7.
+- **Files**: `index.html`, `sw.js`, `vendor/jspdf/jspdf.umd.min.js`, `docs/PROGRESS.md`, `docs/CHANGELOG.md`, `docs/DECISIONS.md`
+- **Tested**: `node --test` → 89/89. Manual checklist below to run on Android.
+- **Next**: Done — all Phase 1 milestones complete. Polish pass if needed.
 
 ### 20260928 — M5+M7 reorder + naming
 - **Did**: Reorder toolbar (Reverse, Sort by time, Tap-to-number mode with Apply/Cancel/Undo). Move up/down in per-page action sheet. Metadata editor sheet (✎ button): title, category chips with custom option, YYYYMMDD date with live validation, live filename preview. Core additions: reorderPages, reverseDocPages, sortDocPagesByTime, buildFilename, updateDocumentMeta, addCategory — 89 unit tests, all passing. sw.js CACHE_VERSION → 6. M6 (inbox grouping) skipped per user request.
@@ -37,6 +44,22 @@
 - **Tested**: `node --test` passes (1 smoke test). Manual checklist below to run on Android.
 - **Open issues**: Icons are solid-color placeholders — replace with a real icon before M9.
 - **Next**: M1 — Data model & storage.
+
+## Manual test checklist — M8+M9
+
+### PDF export (M8)
+- [ ] Open a document with at least 2 pages → 📄 button visible in the header
+- [ ] Tap 📄 → progress overlay appears showing "Page 1 of N…"
+- [ ] Progress completes → Android share sheet opens with a PDF file
+- [ ] Save PDF to Files app → open it → all pages present, correct orientation, readable
+- [ ] Rotate a page in the viewer, then export → rotated page appears correctly in the PDF
+- [ ] Try exporting an empty document → alert says "no pages to export" (no crash)
+
+### Share target (M9)
+- [ ] Open Google Photos (or Gallery) → select 2–3 photos → tap Share → DocSorter appears in the share sheet
+- [ ] Tap DocSorter → app opens on the Inbox screen and the shared photos appear as imported thumbnails
+- [ ] Confirm photos are fully imported (thumbnails visible, no errors)
+- [ ] Share a single photo → same result
 
 ## Manual test checklist — M5+M7
 

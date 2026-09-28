@@ -385,6 +385,46 @@
   </style>
 
   <!-- ============================================================
+       M8: Export button + progress overlay styles
+       ============================================================ -->
+  <style>
+    #btn-export-pdf {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: 50%;
+      font-size: 18px; cursor: pointer; color: #5f6368;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+
+    #export-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 250;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+    }
+    #export-overlay[hidden] { display: none; }
+
+    #export-status {
+      color: #fff; font-size: 16px; font-weight: 500;
+      text-align: center; padding: 0 32px;
+    }
+
+    #export-progress-bar {
+      width: 200px; height: 4px;
+      background: rgba(255,255,255,.3); border-radius: 2px; overflow: hidden;
+    }
+
+    #export-progress-fill {
+      height: 100%; width: 0%;
+      background: #fff; border-radius: 2px;
+      transition: width .1s linear;
+    }
+  </style>
+
+  <!-- ============================================================
        M3: Viewer overlay styles
        Full-screen image viewer with zoom/pan/swipe gestures.
        ============================================================ -->
@@ -691,6 +731,7 @@
           <button id="btn-back" aria-label="Back to documents">&#8592;</button>
           <span id="doc-detail-title-text">Untitled</span>
           <button id="btn-edit-meta" aria-label="Edit document details">&#9998;</button>
+          <button id="btn-export-pdf" aria-label="Export as PDF">&#128196;</button>
         </div>
         <div id="doc-detail-body">
           <div id="doc-detail-actions">
@@ -850,6 +891,14 @@
 </div>
 
 <!-- ============================================================
+     M8: Export progress overlay
+     ============================================================ -->
+<div id="export-overlay" hidden aria-live="polite" aria-label="Exporting PDF">
+  <div id="export-status">Preparing PDF…</div>
+  <div id="export-progress-bar"><div id="export-progress-fill"></div></div>
+</div>
+
+<!-- ============================================================
      M7: Document metadata editor bottom sheet
      ============================================================ -->
 <div id="meta-backdrop" hidden aria-hidden="true"></div>
@@ -878,6 +927,7 @@
 
 <script src="core.js"></script>
 <script src="vendor/exifr/exifr.umd.js"></script>
+<script src="vendor/jspdf/jspdf.umd.min.js"></script>
 
 <!-- ============================================================
      M0: Navigation + service worker registration
@@ -2117,6 +2167,210 @@ async function renderInbox() {
     toolbar.hidden = !hasPages;
     if (!hasPages) exitReorderMode();
   };
+
+}());
+</script>
+
+<!-- ============================================================
+     M8: PDF export via jsPDF + Web Share API
+     M9: Share-target queue drain on startup
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  const EXPORT_MAX_LONG_EDGE = 2000;
+  const EXPORT_JPEG_QUALITY  = 0.85;
+
+  const exportOverlay      = document.getElementById('export-overlay');
+  const exportStatus       = document.getElementById('export-status');
+  const exportProgressFill = document.getElementById('export-progress-fill');
+  const btnExport          = document.getElementById('btn-export-pdf');
+
+  // ── PDF export ───────────────────────────────────────────────────────────
+
+  async function renderPageToJpeg(pageId) {
+    const blob = await DB.loadBlob(pageId);
+    if (!blob) throw new Error('Missing blob for page ' + pageId);
+
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+
+      const page     = App.state.pages[pageId];
+      const rotation = page ? page.rotation : 0;
+
+      // After user rotation, effective dimensions may swap
+      const rotated90  = rotation === 90 || rotation === 270;
+      const srcW       = img.naturalWidth;
+      const srcH       = img.naturalHeight;
+      const effectiveW = rotated90 ? srcH : srcW;
+      const effectiveH = rotated90 ? srcW : srcH;
+
+      // Downscale so long edge ≤ EXPORT_MAX_LONG_EDGE
+      const scale  = Math.min(1, EXPORT_MAX_LONG_EDGE / Math.max(effectiveW, effectiveH));
+      const outW   = Math.round(effectiveW * scale);
+      const outH   = Math.round(effectiveH * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+
+      // Apply rotation transform on canvas before drawing
+      ctx.save();
+      ctx.translate(outW / 2, outH / 2);
+      ctx.rotate(rotation * Math.PI / 180);
+      // When rotated, draw dimensions are swapped back to original orientation
+      const drawW = rotated90 ? outH : outW;
+      const drawH = rotated90 ? outW : outH;
+      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+      ctx.restore();
+
+      return await new Promise(res => canvas.toBlob(res, 'image/jpeg', EXPORT_JPEG_QUALITY));
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function exportDocAsPDF(doc) {
+    if (!doc.pageIds.length) {
+      alert('This document has no pages to export.');
+      return;
+    }
+
+    // jsPDF is loaded as jspdf global; the constructor is jspdf.jsPDF
+    const { jsPDF } = window.jspdf;
+
+    exportOverlay.hidden = false;
+    exportProgressFill.style.width = '0%';
+    exportStatus.textContent = 'Preparing PDF…';
+
+    try {
+      let pdf = null;
+
+      for (let i = 0; i < doc.pageIds.length; i++) {
+        const pageId = doc.pageIds[i];
+        exportStatus.textContent = `Page ${i + 1} of ${doc.pageIds.length}…`;
+        exportProgressFill.style.width = ((i / doc.pageIds.length) * 90) + '%';
+
+        const jpegBlob = await renderPageToJpeg(pageId);
+        const jpegUrl  = URL.createObjectURL(jpegBlob);
+        const img      = new Image();
+        img.src        = jpegUrl;
+        await img.decode();
+
+        const imgW = img.naturalWidth;
+        const imgH = img.naturalHeight;
+
+        // A4 dimensions in mm
+        const A4_W = 210, A4_H = 297;
+        const orient = imgW >= imgH ? 'landscape' : 'portrait';
+        const pageW  = orient === 'landscape' ? A4_H : A4_W;
+        const pageH  = orient === 'landscape' ? A4_W : A4_H;
+
+        if (!pdf) {
+          pdf = new jsPDF({ orientation: orient, unit: 'mm', format: 'a4' });
+        } else {
+          pdf.addPage('a4', orient);
+        }
+
+        // Fit image into page with margins, centred
+        const margin = 10;
+        const maxW   = pageW - margin * 2;
+        const maxH   = pageH - margin * 2;
+        const ratio  = Math.min(maxW / imgW, maxH / imgH);
+        const drawW  = imgW * ratio;
+        const drawH  = imgH * ratio;
+        const x      = margin + (maxW - drawW) / 2;
+        const y      = margin + (maxH - drawH) / 2;
+
+        pdf.addImage(jpegUrl, 'JPEG', x, y, drawW, drawH);
+        URL.revokeObjectURL(jpegUrl);
+      }
+
+      exportStatus.textContent = 'Sharing…';
+      exportProgressFill.style.width = '95%';
+
+      const filename = (Core.buildFilename(doc) || 'DocSorter') + '.pdf';
+      const pdfBlob  = pdf.output('blob');
+      const pdfFile  = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+      exportProgressFill.style.width = '100%';
+
+      // Try Web Share API first; fall back to download link
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({ files: [pdfFile], title: doc.title || 'DocSorter' });
+      } else {
+        const a   = document.createElement('a');
+        a.href    = URL.createObjectURL(pdfFile);
+        a.download = filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      }
+    } catch (err) {
+      // AbortError means user dismissed the share sheet — not an error
+      if (err && err.name !== 'AbortError') {
+        console.error('PDF export failed:', err);
+        alert('Export failed: ' + err.message);
+      }
+    } finally {
+      exportOverlay.hidden = true;
+    }
+  }
+
+  btnExport.addEventListener('click', () => {
+    if (!window._currentDocId) return;
+    const doc = App.state.documents.find(d => d.id === window._currentDocId);
+    if (doc) exportDocAsPDF(doc);
+  });
+
+  // ── M9: Drain share-target queue on app startup ──────────────────────────
+
+  async function drainShareQueue() {
+    const cache = await caches.open('docsorter-share-queue');
+    const keys  = await cache.keys();
+    if (!keys.length) return;
+
+    const files = [];
+    for (const req of keys) {
+      const resp = await cache.match(req);
+      if (!resp) continue;
+      const blob = await resp.blob();
+      const name = resp.headers.get('X-File-Name') || 'shared.jpg';
+      files.push(new File([blob], name, { type: blob.type || 'image/jpeg' }));
+      await cache.delete(req);
+    }
+
+    if (files.length) {
+      // Switch to Inbox and import
+      document.querySelectorAll('.nav-btn').forEach(b => {
+        const isInbox = b.dataset.screen === 'inbox';
+        b.classList.toggle('active', isInbox);
+        b.setAttribute('aria-current', isInbox ? 'page' : 'false');
+      });
+      document.querySelectorAll('.screen').forEach(s => {
+        s.classList.toggle('active', s.id === 'screen-inbox');
+      });
+      document.getElementById('btn-new-doc').hidden = true;
+      await handleImport(files);
+    }
+  }
+
+  // Run after initApp has loaded state (wait for DOM + a tick for initApp's awaits)
+  window.addEventListener('load', () => {
+    // Only drain if the URL signals a share target redirect
+    if (new URL(location.href).searchParams.has('shared')) {
+      // Give initApp time to finish loading state before we import
+      setTimeout(async () => {
+        try { await drainShareQueue(); } catch (e) { console.warn('Share queue drain failed:', e); }
+        // Clean up the ?shared=1 from the URL without a page reload
+        history.replaceState(null, '', location.pathname);
+      }, 800);
+    }
+  });
 
 }());
 </script>
