@@ -561,8 +561,7 @@ async function importOneFile(file) {
   App.state = Core.addPageToInbox(App.state, pageId, page);
 }
 
-async function handleImport(fileList) {
-  const files = Array.from(fileList);
+async function handleImport(files) {
   if (!files.length) return;
 
   let failCount = 0;
@@ -594,9 +593,9 @@ async function handleImport(fileList) {
   const input = document.getElementById('file-input');
   document.getElementById('btn-import').addEventListener('click', () => input.click());
   input.addEventListener('change', async e => {
-    const files = e.target.files;
-    e.target.value = ''; // reset so the same files can be selected again
-    await handleImport(files);
+    const files = Array.from(e.target.files); // snapshot before reset — FileList is invalidated by value=''
+    e.target.value = '';
+    if (files.length) await handleImport(files);
   });
 }());
 </script>
