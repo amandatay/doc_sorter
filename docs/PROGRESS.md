@@ -1,8 +1,14 @@
 # Progress
 
-## Current milestone: M3+M4 — Viewer + Build-a-document (status: In progress — awaiting device test)
+## Current milestone: M5+M7 — Reorder + Naming (status: In progress — awaiting device test)
 
 ## Log
+
+### 20260928 — M5+M7 reorder + naming
+- **Did**: Reorder toolbar (Reverse, Sort by time, Tap-to-number mode with Apply/Cancel/Undo). Move up/down in per-page action sheet. Metadata editor sheet (✎ button): title, category chips with custom option, YYYYMMDD date with live validation, live filename preview. Core additions: reorderPages, reverseDocPages, sortDocPagesByTime, buildFilename, updateDocumentMeta, addCategory — 89 unit tests, all passing. sw.js CACHE_VERSION → 6. M6 (inbox grouping) skipped per user request.
+- **Files**: `core.js`, `tests/core.test.js`, `index.html`, `sw.js`, `docs/PROGRESS.md`, `docs/CHANGELOG.md`
+- **Tested**: `node --test` → 89/89. Manual checklist below to run on Android.
+- **Next**: M8+M9 — PDF export + share target.
 
 ### 20260928 — M3+M4 viewer + build-a-document
 - **Did**: Full-screen image viewer (M3) with Pointer Events pinch-zoom/pan/swipe/double-tap, rotate button (persists via Core.rotatePage), page counter, close button. Documents screen (M4): card list, New document FAB, document detail sub-screen with page grid, per-page action sheet (Rotate/Insert after/Retake/Delete), Add via camera, Add from gallery (time-sorted batch), undo snackbar (4 s). Core additions: rotatePage, removePageFromInbox, addDocument, movePageToDocument, addPageToDocument, insertAfterInDocument, retakePage, deletePageFromDocument — all with unit tests (63 total, all passing). sw.js CACHE_VERSION → 5.
@@ -31,6 +37,32 @@
 - **Tested**: `node --test` passes (1 smoke test). Manual checklist below to run on Android.
 - **Open issues**: Icons are solid-color placeholders — replace with a real icon before M9.
 - **Next**: M1 — Data model & storage.
+
+## Manual test checklist — M5+M7
+
+### Reordering (M5)
+- [ ] Open a document with 3+ pages → reorder toolbar visible below Camera/Gallery buttons
+- [ ] Tap "↕ Reorder" → toolbar switches to "X/Y tapped" status + Apply / Cancel buttons
+- [ ] Tap pages in desired order → each shows a large centred number; un-tapped pages dim
+- [ ] Tap a numbered page again → number disappears (deselected)
+- [ ] Tap Apply → pages reordered (tapped first in tap order, then remaining in original order); undo snackbar appears
+- [ ] Tap Undo in snackbar → original order restored
+- [ ] Tap Cancel in reorder mode → order unchanged, mode exits
+- [ ] Tap "⇅ Reverse" → page order reversed; undo snackbar appears
+- [ ] Tap "⏱ By time" → pages sorted by capture time; undo snackbar appears
+- [ ] Tap ⋮ on a page → action sheet shows Move up and Move down (Move up disabled on first page, Move down disabled on last)
+- [ ] Tap Move up / Move down → page moves one step; no snackbar needed
+
+### Metadata editor (M7)
+- [ ] Open a document → header shows ✎ button next to title
+- [ ] Tap ✎ → metadata sheet slides up with Title, Category, Date, filename preview
+- [ ] Type a title → filename preview updates live
+- [ ] Tap a category chip → chip highlights, filename preview updates
+- [ ] Tap "+ Custom" → prompt appears; enter a category name → it appears as a chip
+- [ ] Type 8 digits in Date (e.g. 20260928) → no error shown, filename updates
+- [ ] Type an invalid date (e.g. 20261399) → red error message appears; Save is blocked
+- [ ] Clear date field → no error; filename omits date prefix
+- [ ] Tap Save → sheet closes; header title updates; document card in list updates
 
 ## Manual test checklist — M3+M4
 

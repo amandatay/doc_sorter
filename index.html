@@ -246,6 +246,145 @@
   </style>
 
   <!-- ============================================================
+       M5: Reorder toolbar + tap-to-number mode styles
+       ============================================================ -->
+  <style>
+    #doc-reorder-toolbar {
+      padding: 8px 16px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex; gap: 8px; align-items: center;
+    }
+
+    .reorder-btn {
+      flex: 1;
+      padding: 8px 4px;
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      font-size: 12px; font-weight: 500; color: #202124;
+      cursor: pointer; min-height: 40px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .reorder-btn.active {
+      background: #e8f0fe;
+      border-color: #1a73e8;
+      color: #1a73e8;
+    }
+
+    #reorder-active-bar {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+    }
+
+    #reorder-status {
+      flex: 1; font-size: 12px; color: #5f6368;
+    }
+
+    .doc-page-tap-num {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(26,115,232,.55);
+      color: #fff; font-size: 28px; font-weight: 700;
+      pointer-events: none;
+    }
+
+    /* dim un-tapped pages in reorder mode */
+    .doc-page-cell.reorder-untapped img { opacity: 0.45; }
+  </style>
+
+  <!-- ============================================================
+       M7: Metadata editor bottom sheet styles
+       ============================================================ -->
+  <style>
+    #meta-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 120;
+    }
+    #meta-backdrop[hidden] { display: none; }
+
+    #meta-sheet {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      padding: 12px 24px max(24px, env(safe-area-inset-bottom, 0px));
+      z-index: 121;
+      box-shadow: 0 -4px 20px rgba(0,0,0,.15);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    #meta-sheet[hidden] { display: none; }
+
+    .meta-label {
+      font-size: 12px; font-weight: 600; color: #5f6368;
+      text-transform: uppercase; letter-spacing: .5px;
+      margin: 16px 0 6px;
+    }
+
+    .meta-input {
+      width: 100%; padding: 12px;
+      border: 1px solid #dadce0; border-radius: 8px;
+      font-size: 15px; color: #202124;
+      background: #fff;
+      -webkit-appearance: none;
+    }
+    .meta-input:focus { outline: none; border-color: #1a73e8; }
+
+    #meta-date-error {
+      font-size: 12px; color: #d93025; margin-top: 4px;
+    }
+
+    #meta-category-chips {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+
+    .cat-chip {
+      padding: 8px 14px;
+      border: 1px solid #dadce0; border-radius: 20px;
+      background: #f8f9fa;
+      font-size: 13px; color: #202124;
+      cursor: pointer; min-height: 36px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .cat-chip.selected {
+      background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; font-weight: 500;
+    }
+
+    #meta-filename-preview {
+      margin-top: 16px;
+      padding: 10px 12px;
+      background: #f8f9fa; border-radius: 8px;
+      font-size: 12px; color: #5f6368;
+    }
+
+    #meta-filename-value {
+      font-family: 'Courier New', monospace;
+      font-size: 13px; color: #202124;
+      word-break: break-all;
+    }
+
+    #btn-meta-save {
+      display: block; width: 100%; margin-top: 20px;
+      padding: 14px; background: #1a73e8; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 500; cursor: pointer; min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Edit button in doc detail header */
+    #btn-edit-meta {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: 50%;
+      font-size: 18px; cursor: pointer; color: #5f6368;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+  </style>
+
+  <!-- ============================================================
        M3: Viewer overlay styles
        Full-screen image viewer with zoom/pan/swipe gestures.
        ============================================================ -->
@@ -551,11 +690,26 @@
         <div id="doc-detail-header">
           <button id="btn-back" aria-label="Back to documents">&#8592;</button>
           <span id="doc-detail-title-text">Untitled</span>
+          <button id="btn-edit-meta" aria-label="Edit document details">&#9998;</button>
         </div>
         <div id="doc-detail-body">
           <div id="doc-detail-actions">
             <button class="detail-action-btn" id="btn-add-camera">&#128247; Camera</button>
             <button class="detail-action-btn" id="btn-add-gallery">&#128444; Gallery</button>
+          </div>
+
+          <!-- M5: Reorder toolbar -->
+          <div id="doc-reorder-toolbar" hidden>
+            <div id="reorder-normal-bar" style="display:flex;gap:8px;width:100%">
+              <button class="reorder-btn" id="btn-tap-reorder">&#8597; Reorder</button>
+              <button class="reorder-btn" id="btn-reverse">&#8661; Reverse</button>
+              <button class="reorder-btn" id="btn-sort-time">&#9201; By time</button>
+            </div>
+            <div id="reorder-active-bar" hidden>
+              <span id="reorder-status">Tap pages in order</span>
+              <button class="reorder-btn" id="btn-reorder-cancel">Cancel</button>
+              <button class="reorder-btn active" id="btn-reorder-apply">Apply</button>
+            </div>
           </div>
           <div id="doc-page-grid" role="list" aria-label="Document pages"></div>
           <div id="doc-detail-empty" class="placeholder" hidden>
@@ -640,6 +794,12 @@
 <div id="page-action-backdrop" hidden aria-hidden="true"></div>
 <div id="page-action-sheet" hidden role="dialog" aria-label="Page actions" aria-modal="true">
   <div class="action-sheet-handle" aria-hidden="true"></div>
+  <button class="action-item" id="action-move-up">
+    <span class="action-item-icon" aria-hidden="true">&#8593;</span>Move up
+  </button>
+  <button class="action-item" id="action-move-down">
+    <span class="action-item-icon" aria-hidden="true">&#8595;</span>Move down
+  </button>
   <button class="action-item" id="action-rotate">
     <span class="action-item-icon" aria-hidden="true">&#8635;</span>Rotate
   </button>
@@ -687,6 +847,33 @@
     <span class="settings-value">1</span>
   </div>
   <button id="btn-settings-close">Done</button>
+</div>
+
+<!-- ============================================================
+     M7: Document metadata editor bottom sheet
+     ============================================================ -->
+<div id="meta-backdrop" hidden aria-hidden="true"></div>
+<div id="meta-sheet" hidden role="dialog" aria-label="Document details" aria-modal="true">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <h2 class="sheet-title">Document details</h2>
+
+  <div class="meta-label">Title</div>
+  <input id="meta-title" class="meta-input" type="text" placeholder="Untitled"
+         autocomplete="off" autocorrect="off" spellcheck="false">
+
+  <div class="meta-label">Category</div>
+  <div id="meta-category-chips" role="group" aria-label="Category"></div>
+
+  <div class="meta-label">Date</div>
+  <input id="meta-date" class="meta-input" type="text" inputmode="numeric"
+         maxlength="8" placeholder="YYYYMMDD" autocomplete="off">
+  <div id="meta-date-error" hidden aria-live="polite">Invalid date — use YYYYMMDD (e.g. 20260928)</div>
+
+  <div id="meta-filename-preview">
+    Filename: <span id="meta-filename-value"></span>
+  </div>
+
+  <button id="btn-meta-save">Save</button>
 </div>
 
 <script src="core.js"></script>
@@ -1215,6 +1402,9 @@ async function renderInbox() {
   let _insertAfterPageId = null;
   let _retakePageId      = null;
 
+  // Expose for M5 block
+  window._currentDocId  = null; // kept in sync with _currentDocId below
+
   // ── Undo snackbar ───────────────────────────────────────────────────────
 
   let _undoTimer = null;
@@ -1222,7 +1412,7 @@ async function renderInbox() {
   const snackMsg  = document.getElementById('undo-snackbar-msg');
   const btnUndo   = document.getElementById('btn-undo');
 
-  function showUndo(msg, undoFn) {
+  window.showUndo = function showUndo(msg, undoFn) {
     _undoAction = undoFn;
     snackMsg.textContent = msg;
     snackbar.hidden = false;
@@ -1337,6 +1527,7 @@ async function renderInbox() {
 
   function openDocDetail(docId) {
     _currentDocId = docId;
+    window._currentDocId = docId;
     listView.hidden = true;
     detailView.hidden = false;
     fabNewDoc.hidden = true;
@@ -1349,6 +1540,7 @@ async function renderInbox() {
     listView.hidden = false;
     fabNewDoc.hidden = false;
     _currentDocId = null;
+    window._currentDocId = null;
     renderDocuments();
   }
 
@@ -1363,33 +1555,63 @@ async function renderInbox() {
     detailTitleEl.textContent = doc.title || 'Untitled';
     pageGrid.innerHTML = '';
 
+    // Show/hide reorder toolbar (defined after this block, safe to call via window)
+    if (typeof window.showDocReorderToolbar === 'function') {
+      window.showDocReorderToolbar(doc.pageIds.length > 0);
+    }
+
     if (!doc.pageIds.length) {
       detailEmpty.hidden = false;
       return;
     }
     detailEmpty.hidden = true;
 
+    const reorderMode = typeof window.isReorderMode === 'function' && window.isReorderMode();
+    const tapOrder    = reorderMode && typeof window.getTapOrder === 'function' ? window.getTapOrder() : [];
+
     const cells = doc.pageIds.map((pageId, i) => {
       const cell = document.createElement('div');
-      cell.className = 'doc-page-cell';
+      cell.className = 'doc-page-cell' + (reorderMode && !tapOrder.includes(pageId) ? ' reorder-untapped' : '');
       cell.setAttribute('role', 'listitem');
       cell.dataset.pageId = pageId;
 
       const img = document.createElement('img');
       img.alt = 'Page ' + (i + 1);
-      img.addEventListener('click', () => {
-        openViewer(doc.pageIds, i);
+
+      cell.addEventListener('click', () => {
+        if (reorderMode) {
+          window.onPageCellTap(pageId);
+        } else {
+          openViewer(doc.pageIds, i);
+        }
       });
 
+      // Page number badge — in reorder mode shows tap position or dim dot
       const num = document.createElement('span');
       num.className = 'doc-page-num';
       num.setAttribute('aria-hidden', 'true');
-      num.textContent = i + 1;
+      if (reorderMode) {
+        const tapIdx = tapOrder.indexOf(pageId);
+        num.textContent = tapIdx !== -1 ? (tapIdx + 1) : '';
+      } else {
+        num.textContent = i + 1;
+      }
 
+      // Tap-number overlay (large centered number in reorder mode)
+      if (reorderMode) {
+        const tapNum = document.createElement('div');
+        tapNum.className = 'doc-page-tap-num';
+        const tapIdx = tapOrder.indexOf(pageId);
+        tapNum.textContent = tapIdx !== -1 ? (tapIdx + 1) : '';
+        cell.appendChild(tapNum);
+      }
+
+      // Menu button — hidden in reorder mode
       const menuBtn = document.createElement('button');
       menuBtn.className = 'doc-page-menu-btn';
       menuBtn.setAttribute('aria-label', 'Actions for page ' + (i + 1));
       menuBtn.textContent = '⋮';
+      menuBtn.hidden = reorderMode;
       menuBtn.addEventListener('click', e => {
         e.stopPropagation();
         openPageActionSheet(pageId);
@@ -1423,23 +1645,33 @@ async function renderInbox() {
 
   // ── Page action sheet ────────────────────────────────────────────────────
 
+  window._actionPageId = null;
   let _actionPageId = null;
   const actionBackdrop = document.getElementById('page-action-backdrop');
   const actionSheet    = document.getElementById('page-action-sheet');
 
   function openPageActionSheet(pageId) {
     _actionPageId = pageId;
+    window._actionPageId = pageId;
+
+    // Disable move-up/down when at boundary
+    const doc = App.state.documents.find(d => d.id === _currentDocId);
+    const idx = doc ? doc.pageIds.indexOf(pageId) : -1;
+    document.getElementById('action-move-up').disabled   = idx <= 0;
+    document.getElementById('action-move-down').disabled = idx === -1 || idx >= (doc.pageIds.length - 1);
+
     actionBackdrop.hidden = false;
     actionSheet.hidden    = false;
   }
 
-  function closePageActionSheet() {
+  window.closePageActionSheet = function closePageActionSheet() {
     actionBackdrop.hidden = true;
     actionSheet.hidden    = true;
     _actionPageId = null;
-  }
+    window._actionPageId = null;
+  };
 
-  actionBackdrop.addEventListener('click', closePageActionSheet);
+  actionBackdrop.addEventListener('click', () => closePageActionSheet());
 
   document.getElementById('action-rotate').addEventListener('click', async () => {
     const pageId = _actionPageId;
@@ -1636,6 +1868,255 @@ async function renderInbox() {
       alert('Could not retake photo: ' + err.message);
     }
   });
+
+}());
+</script>
+
+<!-- ============================================================
+     M5: Reorder tools — tap-to-number, up/down, reverse, sort by time
+     M7: Document metadata editor — title, category, date, filename preview
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  // ── M5: Reorder tools ───────────────────────────────────────────────────
+
+  const toolbar         = document.getElementById('doc-reorder-toolbar');
+  const normalBar       = document.getElementById('reorder-normal-bar');
+  const activeBar       = document.getElementById('reorder-active-bar');
+  const reorderStatus   = document.getElementById('reorder-status');
+  const btnTapReorder   = document.getElementById('btn-tap-reorder');
+  const btnReverse      = document.getElementById('btn-reverse');
+  const btnSortTime     = document.getElementById('btn-sort-time');
+  const btnReorderCancel = document.getElementById('btn-reorder-cancel');
+  const btnReorderApply = document.getElementById('btn-reorder-apply');
+
+  let _reorderMode = false;
+  let _tapOrder    = []; // pageIds in the order the user tapped them
+
+  function enterReorderMode() {
+    _reorderMode = true;
+    _tapOrder    = [];
+    btnTapReorder.classList.add('active');
+    normalBar.hidden = true;
+    activeBar.hidden = false;
+    updateReorderStatus();
+    renderCurrentDoc();
+  }
+
+  function exitReorderMode() {
+    _reorderMode = false;
+    _tapOrder    = [];
+    btnTapReorder.classList.remove('active');
+    normalBar.hidden = false;
+    activeBar.hidden = true;
+    renderCurrentDoc();
+  }
+
+  function updateReorderStatus() {
+    const doc = App.state.documents.find(d => d.id === window._currentDocId);
+    const total = doc ? doc.pageIds.length : 0;
+    reorderStatus.textContent = `${_tapOrder.length} / ${total} tapped`;
+  }
+
+  btnTapReorder.addEventListener('click', () => {
+    _reorderMode ? exitReorderMode() : enterReorderMode();
+  });
+
+  btnReverse.addEventListener('click', async () => {
+    if (!window._currentDocId) return;
+    const prev = App.state;
+    App.state = Core.reverseDocPages(App.state, window._currentDocId);
+    await DB.saveState(App.state);
+    renderCurrentDoc();
+    showUndo('Order reversed.', async () => { App.state = prev; await DB.saveState(App.state); renderCurrentDoc(); });
+  });
+
+  btnSortTime.addEventListener('click', async () => {
+    if (!window._currentDocId) return;
+    const prev = App.state;
+    App.state = Core.sortDocPagesByTime(App.state, window._currentDocId);
+    await DB.saveState(App.state);
+    renderCurrentDoc();
+    showUndo('Sorted by time.', async () => { App.state = prev; await DB.saveState(App.state); renderCurrentDoc(); });
+  });
+
+  btnReorderCancel.addEventListener('click', exitReorderMode);
+
+  btnReorderApply.addEventListener('click', async () => {
+    if (!window._currentDocId) return;
+    const doc = App.state.documents.find(d => d.id === window._currentDocId);
+    if (!doc) return;
+
+    // Tapped pages first (in tap order), then untapped pages in their original relative order
+    const tappedSet  = new Set(_tapOrder);
+    const untapped   = doc.pageIds.filter(id => !tappedSet.has(id));
+    const newOrder   = [..._tapOrder, ...untapped];
+
+    const prev = App.state;
+    App.state = Core.reorderPages(App.state, window._currentDocId, newOrder);
+    await DB.saveState(App.state);
+    exitReorderMode();
+    showUndo('Reorder applied.', async () => { App.state = prev; await DB.saveState(App.state); renderCurrentDoc(); });
+  });
+
+  // Expose tap-handler hook for renderCurrentDoc to call on each cell
+  window.onPageCellTap = function (pageId) {
+    if (!_reorderMode) return false; // not handled
+    const idx = _tapOrder.indexOf(pageId);
+    if (idx === -1) {
+      _tapOrder.push(pageId);
+    } else {
+      _tapOrder.splice(idx, 1); // deselect
+    }
+    updateReorderStatus();
+    renderCurrentDoc();
+    return true; // handled
+  };
+
+  window.isReorderMode  = () => _reorderMode;
+  window.getTapOrder    = () => _tapOrder;
+
+  // Move up / down from the action sheet
+  document.getElementById('action-move-up').addEventListener('click', async () => {
+    const pageId = window._actionPageId;
+    closePageActionSheet();
+    if (!window._currentDocId || !pageId) return;
+    const doc = App.state.documents.find(d => d.id === window._currentDocId);
+    const idx = doc.pageIds.indexOf(pageId);
+    if (idx <= 0) return; // already first
+    const newOrder = [...doc.pageIds];
+    newOrder.splice(idx - 1, 0, newOrder.splice(idx, 1)[0]);
+    App.state = Core.reorderPages(App.state, window._currentDocId, newOrder);
+    await DB.saveState(App.state);
+    renderCurrentDoc();
+  });
+
+  document.getElementById('action-move-down').addEventListener('click', async () => {
+    const pageId = window._actionPageId;
+    closePageActionSheet();
+    if (!window._currentDocId || !pageId) return;
+    const doc = App.state.documents.find(d => d.id === window._currentDocId);
+    const idx = doc.pageIds.indexOf(pageId);
+    if (idx === -1 || idx >= doc.pageIds.length - 1) return; // already last
+    const newOrder = [...doc.pageIds];
+    newOrder.splice(idx + 1, 0, newOrder.splice(idx, 1)[0]);
+    App.state = Core.reorderPages(App.state, window._currentDocId, newOrder);
+    await DB.saveState(App.state);
+    renderCurrentDoc();
+  });
+
+  // ── M7: Metadata editor ─────────────────────────────────────────────────
+
+  const metaBackdrop    = document.getElementById('meta-backdrop');
+  const metaSheet       = document.getElementById('meta-sheet');
+  const metaTitleInput  = document.getElementById('meta-title');
+  const metaDateInput   = document.getElementById('meta-date');
+  const metaDateError   = document.getElementById('meta-date-error');
+  const metaCatChips    = document.getElementById('meta-category-chips');
+  const metaFilename    = document.getElementById('meta-filename-value');
+  const btnMetaSave     = document.getElementById('btn-meta-save');
+  const btnEditMeta     = document.getElementById('btn-edit-meta');
+
+  let _metaCategory = 'Other';
+
+  function openMetaSheet() {
+    if (!window._currentDocId) return;
+    const doc = App.state.documents.find(d => d.id === window._currentDocId);
+    if (!doc) return;
+
+    metaTitleInput.value  = doc.title    || '';
+    metaDateInput.value   = doc.date     || '';
+    metaDateError.hidden  = true;
+    _metaCategory         = doc.category || 'Other';
+
+    buildCategoryChips();
+    updateFilenamePreview();
+
+    metaBackdrop.hidden = false;
+    metaSheet.hidden    = false;
+    metaTitleInput.focus();
+  }
+
+  function closeMetaSheet() {
+    metaBackdrop.hidden = true;
+    metaSheet.hidden    = true;
+  }
+
+  function buildCategoryChips() {
+    metaCatChips.innerHTML = '';
+    const cats = [...App.state.categories, '+ Custom'];
+    cats.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'cat-chip' + (cat === _metaCategory ? ' selected' : '');
+      btn.type = 'button';
+      btn.textContent = cat;
+      btn.addEventListener('click', () => {
+        if (cat === '+ Custom') {
+          const custom = prompt('Enter custom category name:');
+          if (!custom || !custom.trim()) return;
+          try {
+            App.state = Core.addCategory(App.state, custom.trim());
+          } catch (e) { return; }
+          _metaCategory = custom.trim();
+        } else {
+          _metaCategory = cat;
+        }
+        buildCategoryChips();
+        updateFilenamePreview();
+      });
+      metaCatChips.appendChild(btn);
+    });
+  }
+
+  function updateFilenamePreview() {
+    const mockDoc = {
+      title:    metaTitleInput.value,
+      category: _metaCategory,
+      date:     metaDateInput.value,
+    };
+    metaFilename.textContent = Core.buildFilename(mockDoc) + '.pdf';
+  }
+
+  metaTitleInput.addEventListener('input', updateFilenamePreview);
+
+  metaDateInput.addEventListener('input', () => {
+    const v = metaDateInput.value;
+    const ok = v === '' || Core.isValidDate(v);
+    metaDateError.hidden = ok;
+    if (ok) updateFilenamePreview();
+  });
+
+  btnMetaSave.addEventListener('click', async () => {
+    const date = metaDateInput.value;
+    if (date !== '' && !Core.isValidDate(date)) {
+      metaDateError.hidden = false;
+      metaDateInput.focus();
+      return;
+    }
+    App.state = Core.updateDocumentMeta(App.state, window._currentDocId, {
+      title:    metaTitleInput.value,
+      category: _metaCategory,
+      date,
+    });
+    await DB.saveState(App.state);
+    closeMetaSheet();
+    renderCurrentDoc();
+    renderDocuments();
+  });
+
+  btnEditMeta.addEventListener('click', openMetaSheet);
+  metaBackdrop.addEventListener('click', closeMetaSheet);
+  document.addEventListener('keydown', e => {
+    if (!metaSheet.hidden && e.key === 'Escape') closeMetaSheet();
+  });
+
+  // Expose for use from the M4 block (showDocDetailToolbar)
+  window.showDocReorderToolbar = function (hasPages) {
+    toolbar.hidden = !hasPages;
+    if (!hasPages) exitReorderMode();
+  };
 
 }());
 </script>

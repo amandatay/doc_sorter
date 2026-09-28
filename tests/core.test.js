@@ -545,3 +545,190 @@ test('deletePageFromDocument throws for unknown docId', () => {
     /docId/
   );
 });
+
+// ── reorderPages ─────────────────────────────────────────────────────────────
+
+function makeDocWithPages(n) {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  const ids = [];
+  for (let i = 0; i < n; i++) {
+    const id = Core.generateId();
+    ids.push(id);
+    s = Core.addPageToDocument(s, docId, id, makePage({ capturedAt: `2026-09-27T1${i}:00:00` }));
+  }
+  return { s, docId, ids };
+}
+
+test('reorderPages sets new page order', () => {
+  const { s, docId, ids } = makeDocWithPages(3);
+  const newOrder = [ids[2], ids[0], ids[1]];
+  const s2 = Core.reorderPages(s, docId, newOrder);
+  assert.deepEqual(s2.documents[0].pageIds, newOrder);
+  assert.deepEqual(Core.validateState(s2), []);
+});
+
+test('reorderPages does not mutate input', () => {
+  const { s, docId, ids } = makeDocWithPages(3);
+  const orig = s.documents[0].pageIds.slice();
+  Core.reorderPages(s, docId, [ids[2], ids[0], ids[1]]);
+  assert.deepEqual(s.documents[0].pageIds, orig);
+});
+
+test('reorderPages throws for unknown docId', () => {
+  assert.throws(() => Core.reorderPages(Core.createState(), 'bad', []), /docId/);
+});
+
+test('reorderPages throws if page set differs', () => {
+  const { s, docId, ids } = makeDocWithPages(2);
+  assert.throws(() => Core.reorderPages(s, docId, [ids[0]]), /same set/);
+  assert.throws(() => Core.reorderPages(s, docId, [ids[0], ids[0]]), /same set/);
+});
+
+// ── reverseDocPages ──────────────────────────────────────────────────────────
+
+test('reverseDocPages reverses page order', () => {
+  const { s, docId, ids } = makeDocWithPages(4);
+  const s2 = Core.reverseDocPages(s, docId);
+  assert.deepEqual(s2.documents[0].pageIds, [...ids].reverse());
+  assert.deepEqual(Core.validateState(s2), []);
+});
+
+test('reverseDocPages single page is a no-op', () => {
+  const { s, docId, ids } = makeDocWithPages(1);
+  const s2 = Core.reverseDocPages(s, docId);
+  assert.deepEqual(s2.documents[0].pageIds, ids);
+});
+
+test('reverseDocPages throws for unknown docId', () => {
+  assert.throws(() => Core.reverseDocPages(Core.createState(), 'bad'), /docId/);
+});
+
+// ── sortDocPagesByTime ───────────────────────────────────────────────────────
+
+test('sortDocPagesByTime sorts pages by capturedAt', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  const idA = Core.generateId(), idB = Core.generateId(), idC = Core.generateId();
+  s = Core.addPageToDocument(s, docId, idA, makePage({ capturedAt: '2026-09-27T12:00:00' }));
+  s = Core.addPageToDocument(s, docId, idB, makePage({ capturedAt: '2026-09-27T08:00:00' }));
+  s = Core.addPageToDocument(s, docId, idC, makePage({ capturedAt: '2026-09-27T10:00:00' }));
+  const s2 = Core.sortDocPagesByTime(s, docId);
+  assert.deepEqual(s2.documents[0].pageIds, [idB, idC, idA]);
+  assert.deepEqual(Core.validateState(s2), []);
+});
+
+test('sortDocPagesByTime throws for unknown docId', () => {
+  assert.throws(() => Core.sortDocPagesByTime(Core.createState(), 'bad'), /docId/);
+});
+
+// ── buildFilename ─────────────────────────────────────────────────────────────
+
+test('buildFilename produces YYYYMMDD_Category_Pascal', () => {
+  const doc = Core.createDocument({ title: 'Blood Test', category: 'Medical', date: '20260928' });
+  assert.equal(Core.buildFilename(doc), '20260928_Medical_BloodTest');
+});
+
+test('buildFilename omits date prefix when date is empty', () => {
+  const doc = Core.createDocument({ title: 'My Report', category: 'Finance', date: '' });
+  assert.equal(Core.buildFilename(doc), 'Finance_MyReport');
+});
+
+test('buildFilename uses Untitled for empty title', () => {
+  const doc = Core.createDocument({ title: '', category: 'Other', date: '20260928' });
+  assert.equal(Core.buildFilename(doc), '20260928_Other_Untitled');
+});
+
+test('buildFilename strips invalid filename chars from title', () => {
+  const doc = Core.createDocument({ title: 'A/B:C*D', category: 'Other', date: '' });
+  assert.equal(Core.buildFilename(doc), 'Other_ABCD');
+});
+
+test('buildFilename strips invalid chars from category', () => {
+  const doc = Core.createDocument({ title: 'Doc', category: 'My/Cat', date: '' });
+  assert.equal(Core.buildFilename(doc), 'MyCat_Doc');
+});
+
+test('buildFilename PascalCase handles multiple words', () => {
+  const doc = Core.createDocument({ title: 'blood pressure reading', category: 'Medical', date: '' });
+  assert.equal(Core.buildFilename(doc), 'Medical_BloodPressureReading');
+});
+
+test('buildFilename collapses extra whitespace in title', () => {
+  const doc = Core.createDocument({ title: '  hello   world  ', category: 'Other', date: '' });
+  assert.equal(Core.buildFilename(doc), 'Other_HelloWorld');
+});
+
+// ── updateDocumentMeta ───────────────────────────────────────────────────────
+
+test('updateDocumentMeta updates title', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { title: 'Old' });
+  const docId = s.documents[0].id;
+  s = Core.updateDocumentMeta(s, docId, { title: 'New' });
+  assert.equal(s.documents[0].title, 'New');
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('updateDocumentMeta updates category and date together', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  s = Core.updateDocumentMeta(s, docId, { category: 'Medical', date: '20260928' });
+  assert.equal(s.documents[0].category, 'Medical');
+  assert.equal(s.documents[0].date, '20260928');
+});
+
+test('updateDocumentMeta allows clearing date with empty string', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { date: '20260928' });
+  const docId = s.documents[0].id;
+  s = Core.updateDocumentMeta(s, docId, { date: '' });
+  assert.equal(s.documents[0].date, '');
+});
+
+test('updateDocumentMeta throws for invalid date', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  assert.throws(() => Core.updateDocumentMeta(s, s.documents[0].id, { date: '99991399' }), /date/);
+});
+
+test('updateDocumentMeta throws for unknown docId', () => {
+  assert.throws(() => Core.updateDocumentMeta(Core.createState(), 'bad', {}), /docId/);
+});
+
+test('updateDocumentMeta does not mutate input', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { title: 'Original' });
+  const docId = s.documents[0].id;
+  Core.updateDocumentMeta(s, docId, { title: 'Changed' });
+  assert.equal(s.documents[0].title, 'Original');
+});
+
+// ── addCategory ───────────────────────────────────────────────────────────────
+
+test('addCategory adds a new category', () => {
+  const s = Core.addCategory(Core.createState(), 'Legal');
+  assert.ok(s.categories.includes('Legal'));
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('addCategory is a no-op if category already exists', () => {
+  const s = Core.createState();
+  const s2 = Core.addCategory(s, 'Medical'); // already in DEFAULT_CATEGORIES
+  assert.equal(s2.categories.length, s.categories.length);
+  assert.equal(s2, s); // same object returned
+});
+
+test('addCategory throws for empty string', () => {
+  assert.throws(() => Core.addCategory(Core.createState(), ''), /non-empty/);
+  assert.throws(() => Core.addCategory(Core.createState(), '   '), /non-empty/);
+});
+
+test('addCategory trims whitespace', () => {
+  const s = Core.addCategory(Core.createState(), '  Legal  ');
+  assert.ok(s.categories.includes('Legal'));
+  assert.ok(!s.categories.includes('  Legal  '));
+});

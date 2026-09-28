@@ -4,6 +4,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## [M5+M7] — 2026-09-28
+### Added
+- Reorder toolbar in document detail: Reverse, Sort by time, and Tap-to-number mode
+- Tap-to-number mode: tap pages in the desired order (1, 2, 3…), tap again to deselect; Apply commits the new order; Undo available
+- Move up / Move down per-page actions in the action sheet
+- Undo snackbar for Reverse and Sort by time
+- Document metadata editor (✎ button in detail header): set title, category, date (YYYYMMDD with live validation)
+- Category chips including "+ Custom" to add your own categories
+- Live filename preview in metadata editor (e.g. `20260928_Medical_BloodTest.pdf`)
+
 ## [M3+M4] — 2026-09-28
 ### Added
 - Full-screen image viewer: pinch-zoom (up to 6×), pan, swipe left/right, double-tap fit↔2×

@@ -360,6 +360,120 @@ const Core = {
     };
   },
 
+  /**
+   * Sets a document's pageIds to newPageIds (must contain exactly the same IDs).
+   * @param {object} state
+   * @param {string} docId
+   * @param {string[]} newPageIds
+   */
+  reorderPages(state, docId, newPageIds) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`reorderPages: docId "${docId}" not found`);
+    const existing = new Set(doc.pageIds);
+    const incoming = new Set(newPageIds);
+    if (existing.size !== incoming.size || ![...existing].every(id => incoming.has(id))) {
+      throw new Error('reorderPages: newPageIds must be the same set of pages');
+    }
+    const now = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt: now,
+      documents: state.documents.map(d =>
+        d.id === docId ? { ...d, pageIds: [...newPageIds], updatedAt: now } : d
+      ),
+    };
+  },
+
+  /**
+   * Reverses the page order of a document.
+   * @param {object} state
+   * @param {string} docId
+   */
+  reverseDocPages(state, docId) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`reverseDocPages: docId "${docId}" not found`);
+    return this.reorderPages(state, docId, [...doc.pageIds].reverse());
+  },
+
+  /**
+   * Sorts a document's pages by capturedAt (then originalName as tiebreaker).
+   * @param {object} state
+   * @param {string} docId
+   */
+  sortDocPagesByTime(state, docId) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`sortDocPagesByTime: docId "${docId}" not found`);
+    const sorted = this.sortPageEntries(doc.pageIds.map(id => [id, state.pages[id]]));
+    return this.reorderPages(state, docId, sorted.map(([id]) => id));
+  },
+
+  /**
+   * Builds the filename stem for a document: {YYYYMMDD}_{Category}_{TitlePascalCase}.
+   * Date prefix is omitted if doc.date is empty.
+   * Strips characters invalid on Windows/Android (\/:*?"<>|) and collapses whitespace.
+   * @param {object} doc
+   * @returns {string}
+   */
+  buildFilename(doc) {
+    const INVALID = /[\\/:*?"<>|]/g;
+
+    const rawTitle = (doc.title || '').replace(INVALID, '').replace(/\s+/g, ' ').trim();
+    const pascal   = (rawTitle || 'Untitled')
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join('');
+
+    const cat = (doc.category || 'Other').replace(INVALID, '').replace(/\s+/g, '') || 'Other';
+
+    return doc.date ? `${doc.date}_${cat}_${pascal}` : `${cat}_${pascal}`;
+  },
+
+  /**
+   * Updates a document's title, category, and/or date. All fields optional.
+   * Throws if date is non-empty and invalid.
+   * @param {object} state
+   * @param {string} docId
+   * @param {{title?: string, category?: string, date?: string}} fields
+   */
+  updateDocumentMeta(state, docId, fields = {}) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`updateDocumentMeta: docId "${docId}" not found`);
+    const { title, category, date } = fields;
+    if (date !== undefined && date !== '' && !this.isValidDate(date)) {
+      throw new Error(`updateDocumentMeta: invalid date "${date}"`);
+    }
+    const updates = {};
+    if (title    !== undefined) updates.title    = title;
+    if (category !== undefined) updates.category = category;
+    if (date     !== undefined) updates.date     = date;
+    const now = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt: now,
+      documents: state.documents.map(d =>
+        d.id === docId ? { ...d, ...updates, updatedAt: now } : d
+      ),
+    };
+  },
+
+  /**
+   * Adds a custom category to state.categories. No-op if already present.
+   * @param {object} state
+   * @param {string} category
+   */
+  addCategory(state, category) {
+    if (typeof category !== 'string' || !category.trim()) {
+      throw new Error('addCategory: category must be a non-empty string');
+    }
+    const cat = category.trim();
+    if (state.categories.includes(cat)) return state;
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      categories: [...state.categories, cat],
+    };
+  },
+
 };
 
 if (typeof module !== 'undefined') module.exports = Core;
