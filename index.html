@@ -2280,8 +2280,10 @@ async function renderInbox() {
         const x      = margin + (maxW - drawW) / 2;
         const y      = margin + (maxH - drawH) / 2;
 
-        // Pass the canvas directly — jsPDF reads pixel data from it synchronously
-        pdf.addImage(canvas, 'JPEG', x, y, drawW, drawH, undefined, 'FAST');
+        // Convert to data URL ourselves — more reliable than passing the canvas element,
+        // which jsPDF may silently fail to read on Android Chrome.
+        const dataUrl = canvas.toDataURL('image/jpeg', EXPORT_JPEG_QUALITY);
+        pdf.addImage(dataUrl, 'JPEG', x, y, drawW, drawH);
       }
 
       exportStatus.textContent = 'Sharing…';
