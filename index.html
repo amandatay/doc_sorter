@@ -2189,51 +2189,15 @@ async function renderInbox() {
 
   // ── PDF export ───────────────────────────────────────────────────────────
 
-  // Returns {canvas, width, height} — canvas has the page drawn at export resolution
-  // with rotation applied. Pass canvas directly to pdf.addImage (blob URLs don't work).
-  async function renderPageToCanvas(pageId) {
-    const blob = await DB.loadBlob(pageId);
-    if (!blob) throw new Error('Missing blob for page ' + pageId);
-
-    const url = URL.createObjectURL(blob);
-    try {
-      const img = new Image();
-      img.src = url;
-      await img.decode();
-
-      const page      = App.state.pages[pageId];
-      const rotation  = page ? page.rotation : 0;
-      const rotated90 = rotation === 90 || rotation === 270;
-      const srcW      = img.naturalWidth;
-      const srcH      = img.naturalHeight;
-
-      // After user rotation the effective W/H may swap
-      const effectiveW = rotated90 ? srcH : srcW;
-      const effectiveH = rotated90 ? srcW : srcH;
-
-      // Downscale so long edge ≤ EXPORT_MAX_LONG_EDGE
-      const scale = Math.min(1, EXPORT_MAX_LONG_EDGE / Math.max(effectiveW, effectiveH));
-      const outW  = Math.round(effectiveW * scale);
-      const outH  = Math.round(effectiveH * scale);
-
-      const canvas  = document.createElement('canvas');
-      canvas.width  = outW;
-      canvas.height = outH;
-      const ctx = canvas.getContext('2d');
-
-      ctx.save();
-      ctx.translate(outW / 2, outH / 2);
-      ctx.rotate(rotation * Math.PI / 180);
-      // Draw dimensions are in the pre-rotation coordinate system
-      const drawW = rotated90 ? outH : outW;
-      const drawH = rotated90 ? outW : outH;
-      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
-      ctx.restore();
-
-      return { canvas, width: outW, height: outH };
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+  // Converts a Blob to a base64 data URL using FileReader.
+  // More reliable than canvas.toDataURL on Android — no canvas required.
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
   }
 
   async function exportDocAsPDF(doc) {
@@ -2252,13 +2216,26 @@ async function renderInbox() {
       let pdf = null;
 
       for (let i = 0; i < doc.pageIds.length; i++) {
-        const pageId = doc.pageIds[i];
+        const pageId  = doc.pageIds[i];
         exportStatus.textContent = `Page ${i + 1} of ${doc.pageIds.length}…`;
         exportProgressFill.style.width = ((i / doc.pageIds.length) * 90) + '%';
 
-        const { canvas, width: imgW, height: imgH } = await renderPageToCanvas(pageId);
+        const blob = await DB.loadBlob(pageId);
+        if (!blob) continue;
 
-        // A4 dimensions in mm; pick orientation to match image aspect
+        // Read blob as data URL — bypasses canvas entirely
+        const dataUrl = await blobToDataUrl(blob);
+
+        // Use stored dimensions (post-EXIF-correction). Swap for 90/270 user rotation.
+        const pageData  = App.state.pages[pageId];
+        const rotation  = pageData ? pageData.rotation : 0;
+        const rotated90 = rotation === 90 || rotation === 270;
+        const rawW      = pageData ? pageData.width  : 1000;
+        const rawH      = pageData ? pageData.height : 1000;
+        const imgW      = rotated90 ? rawH : rawW;
+        const imgH      = rotated90 ? rawW : rawH;
+
+        // A4 in mm; pick orientation to match image aspect
         const A4_W  = 210, A4_H = 297;
         const orient = imgW >= imgH ? 'landscape' : 'portrait';
         const pageW  = orient === 'landscape' ? A4_H : A4_W;
@@ -2280,10 +2257,14 @@ async function renderInbox() {
         const x      = margin + (maxW - drawW) / 2;
         const y      = margin + (maxH - drawH) / 2;
 
-        // Convert to data URL ourselves — more reliable than passing the canvas element,
-        // which jsPDF may silently fail to read on Android Chrome.
-        const dataUrl = canvas.toDataURL('image/jpeg', EXPORT_JPEG_QUALITY);
-        pdf.addImage(dataUrl, 'JPEG', x, y, drawW, drawH);
+        // jsPDF rotation is counter-clockwise; negate our clockwise value.
+        // Pivot is the image's top-left, so shift (x,y) to keep image centred.
+        let rx = x, ry = y, rw = drawW, rh = drawH, rot = 0;
+        if (rotation === 90)  { rx = x + drawW; ry = y;         rw = drawH; rh = drawW; rot = -90;  }
+        if (rotation === 180) { rx = x + drawW; ry = y + drawH; rw = drawW; rh = drawH; rot = -180; }
+        if (rotation === 270) { rx = x;         ry = y + drawH; rw = drawH; rh = drawW; rot = -270; }
+
+        pdf.addImage(dataUrl, 'JPEG', rx, ry, rw, rh, undefined, 'FAST', rot);
       }
 
       exportStatus.textContent = 'Sharing…';
