@@ -21,9 +21,9 @@
 ## D007 — EXIF orientation: rely on Chrome auto-correction (20260928)
 - **Context**: Android photos often have EXIF Orientation tags. The spec says "apply EXIF Orientation only if the browser hasn't already." Canvas drawImage uses the rendered img element which Chrome auto-corrects.
 - **Decision**: Rely on Chrome's auto-correction of EXIF orientation in img elements. The canvas thumbnail is drawn from the auto-corrected img, so it will be correctly oriented. Store `width`/`height` as img.naturalWidth/naturalHeight (post-correction dimensions).
-- **Verification needed**: Confirm on a real Android device that portrait photos appear upright in the thumbnail grid. Record result after M2 device test.
+- **Verified 20260928**: Confirmed on real Android device — Chrome auto-corrects EXIF orientation for both portrait and landscape camera photos. No manual rotation needed at import time.
 - **Alternatives**: Manually apply EXIF rotation on canvas (complex, requires reading Orientation tag separately). Rejected because Chrome handles this for us.
-- **Consequences**: If Chrome does NOT auto-correct (rare, very old Android), portrait photos may appear sideways. This will be caught in the M2 device test.
+- **Consequences**: None — orientation is handled correctly by the browser.
 
 ## D006 — exifr 7.1.3 lite UMD build (20260928)
 - **Context**: Need to read DateTimeOriginal EXIF tag from imported photos to sort and group them accurately.

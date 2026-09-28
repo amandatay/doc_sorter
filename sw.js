@@ -1,7 +1,7 @@
 /* Service worker — offline cache + share-target handler (M9).
  * Bump CACHE_VERSION whenever any cached file changes. */
 
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 const CACHE_NAME = 'docsorter-v' + CACHE_VERSION;
 
 const PRECACHE_URLS = [

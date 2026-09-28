@@ -244,6 +244,275 @@
       pointer-events: none;
     }
   </style>
+
+  <!-- ============================================================
+       M3: Viewer overlay styles
+       Full-screen image viewer with zoom/pan/swipe gestures.
+       ============================================================ -->
+  <style>
+    #viewer-overlay {
+      position: fixed; inset: 0;
+      background: #000;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+    }
+    #viewer-overlay[hidden] { display: none; }
+
+    #viewer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 8px 8px 8px;
+      padding-top: max(8px, env(safe-area-inset-top, 8px));
+      background: rgba(0, 0, 0, .6);
+      position: relative; z-index: 1;
+      flex-shrink: 0;
+    }
+
+    .viewer-btn {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: 50%;
+      color: #fff; font-size: 22px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #viewer-counter {
+      font-size: 15px; font-weight: 500; color: #fff;
+    }
+
+    #viewer-canvas {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      touch-action: none; /* Pointer Events handles all touch */
+    }
+
+    #viewer-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      transform-origin: center center;
+      will-change: transform;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+  </style>
+
+  <!-- ============================================================
+       M4: Documents screen styles — card list, detail sub-screen
+       ============================================================ -->
+  <style>
+    /* ---- Document list ---- */
+    #doc-list {
+      padding: 12px 12px 80px; /* bottom: room for FAB */
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .doc-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 72px;
+    }
+
+    .doc-card-thumb {
+      width: 56px; height: 56px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #e8eaed;
+      flex-shrink: 0;
+    }
+
+    .doc-card-thumb-placeholder {
+      width: 56px; height: 56px;
+      border-radius: 6px;
+      background: #e8eaed;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .doc-card-info { flex: 1; min-width: 0; }
+    .doc-card-title {
+      font-size: 15px; font-weight: 500; color: #202124;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .doc-card-meta { font-size: 12px; color: #5f6368; margin-top: 2px; }
+
+    #btn-new-doc {
+      position: fixed; bottom: calc(56px + 16px + env(safe-area-inset-bottom, 0px)); right: 16px;
+      width: 56px; height: 56px;
+      background: #1a73e8; color: #fff;
+      border: none; border-radius: 50%;
+      font-size: 28px; line-height: 1;
+      box-shadow: 0 4px 12px rgba(26,115,232,.4);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ---- Document detail ---- */
+    #doc-detail-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    #doc-detail-view[hidden] { display: none; }
+
+    #doc-detail-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 8px;
+      height: 56px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0;
+    }
+
+    #btn-back {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; border-radius: 50%;
+      font-size: 22px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      color: #202124;
+    }
+
+    #doc-detail-title-text {
+      flex: 1; font-size: 17px; font-weight: 500; color: #202124;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    #doc-detail-body { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+
+    #doc-detail-actions {
+      padding: 12px 16px;
+      display: flex; gap: 8px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .detail-action-btn {
+      flex: 1;
+      padding: 10px 8px;
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: #202124;
+      cursor: pointer; min-height: 44px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #doc-page-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      padding: 2px;
+    }
+
+    .doc-page-cell {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      background: #e8eaed;
+      overflow: hidden;
+    }
+
+    .doc-page-cell img {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+      cursor: pointer;
+    }
+
+    .doc-page-num {
+      position: absolute; bottom: 4px; right: 4px;
+      background: rgba(0,0,0,.55);
+      color: #fff; font-size: 11px; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px;
+      line-height: 1.6;
+      pointer-events: none;
+    }
+
+    .doc-page-menu-btn {
+      position: absolute; top: 2px; right: 2px;
+      width: 28px; height: 28px;
+      background: rgba(0,0,0,.45);
+      border: none; border-radius: 50%;
+      color: #fff; font-size: 16px; line-height: 1;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ---- Page action sheet ---- */
+    #page-action-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 150;
+    }
+    #page-action-backdrop[hidden] { display: none; }
+
+    #page-action-sheet {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      padding: 8px 0 max(24px, env(safe-area-inset-bottom, 0px));
+      z-index: 151;
+      box-shadow: 0 -4px 20px rgba(0,0,0,.15);
+    }
+    #page-action-sheet[hidden] { display: none; }
+
+    .action-sheet-handle {
+      width: 36px; height: 4px;
+      background: #dadce0; border-radius: 2px;
+      margin: 8px auto 12px;
+    }
+
+    .action-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 20px;
+      background: none; border: none; width: 100%;
+      font-size: 15px; color: #202124;
+      cursor: pointer; min-height: 52px;
+      -webkit-tap-highlight-color: transparent;
+      text-align: left;
+    }
+    .action-item:active { background: #f1f3f4; }
+    .action-item.destructive { color: #d93025; }
+    .action-item-icon { font-size: 20px; width: 24px; text-align: center; }
+
+    /* ---- Undo snackbar ---- */
+    #undo-snackbar {
+      position: fixed;
+      bottom: calc(56px + 12px + env(safe-area-inset-bottom, 0px));
+      left: 16px; right: 16px;
+      background: #323232; color: #fff;
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 190;
+      box-shadow: 0 4px 12px rgba(0,0,0,.3);
+      font-size: 14px;
+    }
+    #undo-snackbar[hidden] { display: none; }
+
+    #btn-undo {
+      background: none; border: none;
+      color: #8ab4f8; font-size: 14px; font-weight: 600;
+      padding: 4px 0 4px 16px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
 </head>
 <body>
 
@@ -263,14 +532,50 @@
   <div id="screen-container">
 
     <!-- ============================================================
-         Documents screen (M4+)
+         Documents screen (M4) — card list + detail sub-screen
          ============================================================ -->
     <div id="screen-documents" class="screen active" role="main" aria-label="Documents">
-      <div class="placeholder">
-        <div class="placeholder-icon" aria-hidden="true">📄</div>
-        <h2>Documents</h2>
-        <p>Your saved documents will appear here.</p>
+
+      <!-- Document list view -->
+      <div id="doc-list-view">
+        <div id="doc-list" role="list" aria-label="Documents"></div>
+        <div id="doc-list-empty" class="placeholder" hidden>
+          <div class="placeholder-icon" aria-hidden="true">📄</div>
+          <h2>No documents yet</h2>
+          <p>Tap <strong>+</strong> to create your first document.</p>
+        </div>
       </div>
+
+      <!-- Document detail sub-screen -->
+      <div id="doc-detail-view" hidden aria-label="Document detail">
+        <div id="doc-detail-header">
+          <button id="btn-back" aria-label="Back to documents">&#8592;</button>
+          <span id="doc-detail-title-text">Untitled</span>
+        </div>
+        <div id="doc-detail-body">
+          <div id="doc-detail-actions">
+            <button class="detail-action-btn" id="btn-add-camera">&#128247; Camera</button>
+            <button class="detail-action-btn" id="btn-add-gallery">&#128444; Gallery</button>
+          </div>
+          <div id="doc-page-grid" role="list" aria-label="Document pages"></div>
+          <div id="doc-detail-empty" class="placeholder" hidden>
+            <div class="placeholder-icon" aria-hidden="true">&#128247;</div>
+            <h2>No pages yet</h2>
+            <p>Use Camera or Gallery to add pages.</p>
+          </div>
+          <!-- Hidden file inputs for document capture -->
+          <input id="doc-camera-input" type="file" accept="image/*" capture="environment"
+                 hidden aria-hidden="true" tabindex="-1">
+          <input id="doc-gallery-input" type="file" accept="image/*" multiple
+                 hidden aria-hidden="true" tabindex="-1">
+          <!-- For insert-after actions -->
+          <input id="doc-insert-camera-input" type="file" accept="image/*" capture="environment"
+                 hidden aria-hidden="true" tabindex="-1">
+          <input id="doc-retake-input" type="file" accept="image/*" capture="environment"
+                 hidden aria-hidden="true" tabindex="-1">
+        </div>
+      </div>
+
     </div>
 
     <!-- ============================================================
@@ -316,6 +621,53 @@
 </div><!-- /app -->
 
 <!-- ============================================================
+     M3: Full-screen viewer overlay
+     ============================================================ -->
+<div id="viewer-overlay" hidden role="dialog" aria-label="Page viewer" aria-modal="true">
+  <div id="viewer-header">
+    <button class="viewer-btn" id="viewer-close" aria-label="Close viewer">&#10005;</button>
+    <span id="viewer-counter" aria-live="polite">1/1</span>
+    <button class="viewer-btn" id="viewer-rotate" aria-label="Rotate 90°">&#8635;</button>
+  </div>
+  <div id="viewer-canvas" aria-hidden="true">
+    <img id="viewer-img" src="" alt="Page">
+  </div>
+</div>
+
+<!-- ============================================================
+     M4: Page action sheet (per-page actions in document detail)
+     ============================================================ -->
+<div id="page-action-backdrop" hidden aria-hidden="true"></div>
+<div id="page-action-sheet" hidden role="dialog" aria-label="Page actions" aria-modal="true">
+  <div class="action-sheet-handle" aria-hidden="true"></div>
+  <button class="action-item" id="action-rotate">
+    <span class="action-item-icon" aria-hidden="true">&#8635;</span>Rotate
+  </button>
+  <button class="action-item" id="action-insert-after">
+    <span class="action-item-icon" aria-hidden="true">&#43;</span>Insert after
+  </button>
+  <button class="action-item" id="action-retake">
+    <span class="action-item-icon" aria-hidden="true">&#128247;</span>Retake
+  </button>
+  <button class="action-item destructive" id="action-delete">
+    <span class="action-item-icon" aria-hidden="true">&#128465;</span>Delete
+  </button>
+</div>
+
+<!-- ============================================================
+     M4: Undo snackbar
+     ============================================================ -->
+<div id="undo-snackbar" hidden role="status" aria-live="polite">
+  <span id="undo-snackbar-msg">Page deleted.</span>
+  <button id="btn-undo">Undo</button>
+</div>
+
+<!-- ============================================================
+     M4: New document FAB (only visible on documents screen)
+     ============================================================ -->
+<button id="btn-new-doc" aria-label="New document" hidden>&#43;</button>
+
+<!-- ============================================================
      M1: Settings bottom sheet
      ============================================================ -->
 <div id="settings-backdrop" hidden aria-hidden="true"></div>
@@ -349,6 +701,7 @@
 
   const screens = document.querySelectorAll('.screen');
   const navBtns = document.querySelectorAll('.nav-btn');
+  const fabNewDoc = document.getElementById('btn-new-doc');
 
   function showScreen(name) {
     screens.forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
@@ -357,6 +710,7 @@
       b.classList.toggle('active', active);
       b.setAttribute('aria-current', active ? 'page' : 'false');
     });
+    fabNewDoc.hidden = (name !== 'documents');
   }
 
   navBtns.forEach(btn => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
@@ -446,6 +800,7 @@ async function initApp() {
   }
 
   renderSettings();
+  renderDocuments(); // renderDocuments is defined in the M4 block below
   await renderInbox(); // renderInbox is defined in the M2 block below
 }
 
@@ -601,6 +956,180 @@ async function handleImport(files) {
 </script>
 
 <!-- ============================================================
+     M3: Full-screen viewer
+     Opens with a list of pageIds and the index of the tapped page.
+     Supports pinch-zoom (max 6×), pan, swipe (at fit scale), double-tap, rotate.
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  const overlay    = document.getElementById('viewer-overlay');
+  const imgEl      = document.getElementById('viewer-img');
+  const counterEl  = document.getElementById('viewer-counter');
+  const btnClose   = document.getElementById('viewer-close');
+  const btnRotate  = document.getElementById('viewer-rotate');
+  const canvas     = document.getElementById('viewer-canvas');
+
+  let _pageIds  = [];
+  let _idx      = 0;
+  let _rotation = 0;   // stored rotation from page data (0/90/180/270)
+  let _scale    = 1;   // user zoom (1 = fit)
+  let _tx       = 0;   // pan X (screen pixels)
+  let _ty       = 0;   // pan Y (screen pixels)
+  let _blobURL  = null;
+
+  const MAX_SCALE = 6;
+
+  // Transform order: translate → rotate around center → scale around center.
+  // Because CSS applies right-to-left, `translate rotate scale` means:
+  // scale (centered), rotate (centered), then translate — which gives natural zoom+rotate+pan.
+  function applyTransform() {
+    imgEl.style.transform =
+      `translate(${_tx}px, ${_ty}px) rotate(${_rotation}deg) scale(${_scale})`;
+  }
+
+  function resetTransform(newRotation) {
+    _rotation = newRotation !== undefined ? newRotation : _rotation;
+    _scale = 1; _tx = 0; _ty = 0;
+    applyTransform();
+  }
+
+  async function loadPage(idx) {
+    _idx = idx;
+    const pageId = _pageIds[idx];
+    counterEl.textContent = (idx + 1) + ' / ' + _pageIds.length;
+    imgEl.src = '';
+    if (_blobURL) { URL.revokeObjectURL(_blobURL); _blobURL = null; }
+
+    const page = App.state.pages[pageId];
+    resetTransform(page ? page.rotation : 0);
+
+    const blob = await DB.loadBlob(pageId);
+    if (blob) {
+      _blobURL = URL.createObjectURL(blob);
+      imgEl.src = _blobURL;
+    }
+  }
+
+  // ── Open / close ────────────────────────────────────────────────────────
+
+  window.openViewer = async function (pageIds, startIdx) {
+    _pageIds = pageIds;
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    await loadPage(startIdx);
+  };
+
+  function closeViewer() {
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+    if (_blobURL) { URL.revokeObjectURL(_blobURL); _blobURL = null; }
+  }
+
+  btnClose.addEventListener('click', closeViewer);
+  document.addEventListener('keydown', e => {
+    if (overlay.hidden) return;
+    if (e.key === 'Escape') closeViewer();
+    if (e.key === 'ArrowRight' && _idx < _pageIds.length - 1) loadPage(_idx + 1);
+    if (e.key === 'ArrowLeft'  && _idx > 0)                   loadPage(_idx - 1);
+  });
+
+  // ── Rotate ──────────────────────────────────────────────────────────────
+
+  btnRotate.addEventListener('click', async () => {
+    const pageId = _pageIds[_idx];
+    App.state = Core.rotatePage(App.state, pageId);
+    await DB.saveState(App.state);
+    _rotation = App.state.pages[pageId].rotation;
+    _scale = 1; _tx = 0; _ty = 0;
+    applyTransform();
+    // Update thumbnails in background (viewer stays open)
+    renderInbox();
+    if (typeof renderCurrentDoc === 'function') renderCurrentDoc();
+  });
+
+  // ── Pointer Events: pinch-zoom, pan, swipe, double-tap ──────────────────
+
+  let _pointers    = new Map();
+  let _pinchDist0  = 0;
+  let _pinchScale0 = 1;
+  let _panStart    = null; // {x, y, tx, ty}
+  let _swipeStartX = 0;
+  let _lastTap     = 0;
+
+  function ptDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  function clampTx(scale, tx, ty) {
+    const maxX = canvas.clientWidth  * (scale - 1) / 2;
+    const maxY = canvas.clientHeight * (scale - 1) / 2;
+    return {
+      tx: Math.max(-maxX, Math.min(maxX, tx)),
+      ty: Math.max(-maxY, Math.min(maxY, ty)),
+    };
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId);
+    _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (_pointers.size === 1) {
+      const now = Date.now();
+      if (now - _lastTap < 300) {
+        // Double-tap: toggle fit ↔ 2×
+        _scale = _scale > 1.1 ? 1 : 2;
+        _tx = 0; _ty = 0;
+        applyTransform();
+        _lastTap = 0;
+        return;
+      }
+      _lastTap     = now;
+      _swipeStartX = e.clientX;
+      _panStart    = { x: e.clientX, y: e.clientY, tx: _tx, ty: _ty };
+    }
+
+    if (_pointers.size === 2) {
+      const pts = [..._pointers.values()];
+      _pinchDist0  = ptDist(pts[0], pts[1]);
+      _pinchScale0 = _scale;
+    }
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if (!_pointers.has(e.pointerId)) return;
+    _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (_pointers.size === 2) {
+      const pts  = [..._pointers.values()];
+      _scale = Math.min(MAX_SCALE, Math.max(1, _pinchScale0 * (ptDist(pts[0], pts[1]) / _pinchDist0)));
+      if (_scale <= 1) { _tx = 0; _ty = 0; }
+      applyTransform();
+    } else if (_pointers.size === 1 && _panStart && _scale > 1.05) {
+      const c = clampTx(_scale, _panStart.tx + e.clientX - _panStart.x,
+                                _panStart.ty + e.clientY - _panStart.y);
+      _tx = c.tx; _ty = c.ty;
+      applyTransform();
+    }
+  });
+
+  canvas.addEventListener('pointerup', e => {
+    if (!_pointers.has(e.pointerId)) return;
+    if (_pointers.size === 1 && _scale <= 1.05) {
+      const dx = e.clientX - _swipeStartX;
+      if (Math.abs(dx) > 50) {
+        if (dx < 0 && _idx < _pageIds.length - 1) { resetTransform(_rotation); loadPage(_idx + 1); }
+        if (dx > 0 && _idx > 0)                   { resetTransform(_rotation); loadPage(_idx - 1); }
+      }
+    }
+    _pointers.delete(e.pointerId);
+    if (_pointers.size < 2) _panStart = null;
+  });
+
+  canvas.addEventListener('pointercancel', e => { _pointers.delete(e.pointerId); });
+}());
+</script>
+
+<!-- ============================================================
      M2: Inbox rendering — displays thumbnails sorted by capture time
      ============================================================ -->
 <script>
@@ -647,6 +1176,13 @@ async function renderInbox() {
 
     cell.appendChild(img);
     grid.appendChild(cell);
+
+    // Tap opens viewer with inbox sorted order
+    cell.addEventListener('click', () => {
+      const allIds = Core.sortedInboxEntries(App.state).map(([id]) => id);
+      openViewer(allIds, allIds.indexOf(pageId));
+    });
+
     return { img, pageId };
   });
 
@@ -660,6 +1196,448 @@ async function renderInbox() {
     }
   }));
 }
+</script>
+
+<!-- ============================================================
+     M4: Documents list + document detail sub-screen
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  // ── State ───────────────────────────────────────────────────────────────
+
+  let _currentDocId = null;   // which document is open in detail view
+  let _detailURLs   = [];     // object URLs to revoke on detail close
+  let _undoAction   = null;   // {fn, msg} for undo
+
+  // For insert-after and retake, track which page triggered the action
+  let _insertAfterPageId = null;
+  let _retakePageId      = null;
+
+  // ── Undo snackbar ───────────────────────────────────────────────────────
+
+  let _undoTimer = null;
+  const snackbar  = document.getElementById('undo-snackbar');
+  const snackMsg  = document.getElementById('undo-snackbar-msg');
+  const btnUndo   = document.getElementById('btn-undo');
+
+  function showUndo(msg, undoFn) {
+    _undoAction = undoFn;
+    snackMsg.textContent = msg;
+    snackbar.hidden = false;
+    clearTimeout(_undoTimer);
+    _undoTimer = setTimeout(dismissUndo, 4000);
+  }
+
+  function dismissUndo() {
+    snackbar.hidden = true;
+    _undoAction = null;
+    clearTimeout(_undoTimer);
+  }
+
+  btnUndo.addEventListener('click', () => {
+    if (_undoAction) { _undoAction(); _undoAction = null; }
+    dismissUndo();
+  });
+
+  // ── Document list render ────────────────────────────────────────────────
+
+  const listContainer  = document.getElementById('doc-list');
+  const listEmpty      = document.getElementById('doc-list-empty');
+  const detailView     = document.getElementById('doc-detail-view');
+  const listView       = document.getElementById('doc-list-view');
+  const fabNewDoc      = document.getElementById('btn-new-doc');
+
+  let _listURLs = [];
+
+  function revokeListURLs() {
+    _listURLs.forEach(u => URL.revokeObjectURL(u));
+    _listURLs = [];
+  }
+
+  window.renderDocuments = async function () {
+    revokeListURLs();
+    listContainer.innerHTML = '';
+    const docs = App.state.documents;
+    if (!docs.length) {
+      listEmpty.hidden = false;
+      return;
+    }
+    listEmpty.hidden = true;
+
+    for (const doc of docs) {
+      const card = document.createElement('div');
+      card.className = 'doc-card';
+      card.setAttribute('role', 'listitem');
+      card.dataset.docId = doc.id;
+
+      const firstPageId = doc.pageIds[0];
+      if (firstPageId) {
+        const thumb = document.createElement('img');
+        thumb.className = 'doc-card-thumb';
+        thumb.alt = '';
+        const blob = await DB.loadBlob(firstPageId + ':thumb');
+        if (blob) {
+          const u = URL.createObjectURL(blob);
+          _listURLs.push(u);
+          thumb.src = u;
+          // Apply stored rotation
+          const page = App.state.pages[firstPageId];
+          if (page && page.rotation) thumb.style.transform = `rotate(${page.rotation}deg)`;
+        }
+        card.appendChild(thumb);
+      } else {
+        const ph = document.createElement('div');
+        ph.className = 'doc-card-thumb-placeholder';
+        ph.textContent = '📄';
+        card.appendChild(ph);
+      }
+
+      const info = document.createElement('div');
+      info.className = 'doc-card-info';
+      const title = document.createElement('div');
+      title.className = 'doc-card-title';
+      title.textContent = doc.title || 'Untitled';
+      const meta = document.createElement('div');
+      meta.className = 'doc-card-meta';
+      const pc = doc.pageIds.length;
+      meta.textContent = pc + ' page' + (pc === 1 ? '' : 's') +
+        (doc.date ? '  ·  ' + doc.date : '');
+      info.appendChild(title);
+      info.appendChild(meta);
+      card.appendChild(info);
+
+      card.addEventListener('click', () => openDocDetail(doc.id));
+      listContainer.appendChild(card);
+    }
+  };
+
+  // ── New document ─────────────────────────────────────────────────────────
+
+  fabNewDoc.addEventListener('click', () => {
+    App.state = Core.addDocument(App.state, { title: 'Untitled' });
+    DB.saveState(App.state);
+    renderDocuments();
+    openDocDetail(App.state.documents[App.state.documents.length - 1].id);
+  });
+
+  // ── Document detail ──────────────────────────────────────────────────────
+
+  const detailTitleEl  = document.getElementById('doc-detail-title-text');
+  const pageGrid       = document.getElementById('doc-page-grid');
+  const detailEmpty    = document.getElementById('doc-detail-empty');
+  const btnBack        = document.getElementById('btn-back');
+  const btnAddCamera   = document.getElementById('btn-add-camera');
+  const btnAddGallery  = document.getElementById('btn-add-gallery');
+  const cameraInput    = document.getElementById('doc-camera-input');
+  const galleryInput   = document.getElementById('doc-gallery-input');
+  const insertInput    = document.getElementById('doc-insert-camera-input');
+  const retakeInput    = document.getElementById('doc-retake-input');
+
+  function openDocDetail(docId) {
+    _currentDocId = docId;
+    listView.hidden = true;
+    detailView.hidden = false;
+    fabNewDoc.hidden = true;
+    renderCurrentDoc();
+  }
+
+  function closeDocDetail() {
+    revokeDetailURLs();
+    detailView.hidden = true;
+    listView.hidden = false;
+    fabNewDoc.hidden = false;
+    _currentDocId = null;
+    renderDocuments();
+  }
+
+  btnBack.addEventListener('click', closeDocDetail);
+
+  window.renderCurrentDoc = async function () {
+    if (!_currentDocId) return;
+    const doc = App.state.documents.find(d => d.id === _currentDocId);
+    if (!doc) { closeDocDetail(); return; }
+
+    revokeDetailURLs();
+    detailTitleEl.textContent = doc.title || 'Untitled';
+    pageGrid.innerHTML = '';
+
+    if (!doc.pageIds.length) {
+      detailEmpty.hidden = false;
+      return;
+    }
+    detailEmpty.hidden = true;
+
+    const cells = doc.pageIds.map((pageId, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'doc-page-cell';
+      cell.setAttribute('role', 'listitem');
+      cell.dataset.pageId = pageId;
+
+      const img = document.createElement('img');
+      img.alt = 'Page ' + (i + 1);
+      img.addEventListener('click', () => {
+        openViewer(doc.pageIds, i);
+      });
+
+      const num = document.createElement('span');
+      num.className = 'doc-page-num';
+      num.setAttribute('aria-hidden', 'true');
+      num.textContent = i + 1;
+
+      const menuBtn = document.createElement('button');
+      menuBtn.className = 'doc-page-menu-btn';
+      menuBtn.setAttribute('aria-label', 'Actions for page ' + (i + 1));
+      menuBtn.textContent = '⋮';
+      menuBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        openPageActionSheet(pageId);
+      });
+
+      // Apply rotation from page data
+      const page = App.state.pages[pageId];
+      if (page && page.rotation) img.style.transform = `rotate(${page.rotation}deg)`;
+
+      cell.appendChild(img);
+      cell.appendChild(num);
+      cell.appendChild(menuBtn);
+      pageGrid.appendChild(cell);
+      return { img, pageId };
+    });
+
+    await Promise.all(cells.map(async ({ img, pageId }) => {
+      const blob = await DB.loadBlob(pageId + ':thumb');
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        _detailURLs.push(url);
+        img.src = url;
+      }
+    }));
+  };
+
+  function revokeDetailURLs() {
+    _detailURLs.forEach(u => URL.revokeObjectURL(u));
+    _detailURLs = [];
+  }
+
+  // ── Page action sheet ────────────────────────────────────────────────────
+
+  let _actionPageId = null;
+  const actionBackdrop = document.getElementById('page-action-backdrop');
+  const actionSheet    = document.getElementById('page-action-sheet');
+
+  function openPageActionSheet(pageId) {
+    _actionPageId = pageId;
+    actionBackdrop.hidden = false;
+    actionSheet.hidden    = false;
+  }
+
+  function closePageActionSheet() {
+    actionBackdrop.hidden = true;
+    actionSheet.hidden    = true;
+    _actionPageId = null;
+  }
+
+  actionBackdrop.addEventListener('click', closePageActionSheet);
+
+  document.getElementById('action-rotate').addEventListener('click', async () => {
+    const pageId = _actionPageId;
+    closePageActionSheet();
+    App.state = Core.rotatePage(App.state, pageId);
+    await DB.saveState(App.state);
+    renderCurrentDoc();
+  });
+
+  document.getElementById('action-insert-after').addEventListener('click', () => {
+    _insertAfterPageId = _actionPageId;
+    closePageActionSheet();
+    insertInput.value = '';
+    insertInput.click();
+  });
+
+  document.getElementById('action-retake').addEventListener('click', () => {
+    _retakePageId = _actionPageId;
+    closePageActionSheet();
+    retakeInput.value = '';
+    retakeInput.click();
+  });
+
+  document.getElementById('action-delete').addEventListener('click', async () => {
+    const pageId = _actionPageId;
+    closePageActionSheet();
+    const docId  = _currentDocId;
+
+    // Save undo snapshot
+    const prevState = App.state;
+    App.state = Core.deletePageFromDocument(App.state, docId, pageId);
+    await DB.saveState(App.state);
+    renderCurrentDoc();
+    renderDocuments();
+
+    showUndo('Page deleted.', async () => {
+      App.state = prevState;
+      await DB.saveState(App.state);
+      renderCurrentDoc();
+      renderDocuments();
+    });
+  });
+
+  // ── Add pages: camera ───────────────────────────────────────────────────
+
+  btnAddCamera.addEventListener('click', () => { cameraInput.value = ''; cameraInput.click(); });
+
+  async function captureAndAddToDoc(file, docId, insertAfterId) {
+    let capturedAt, capturedAtSource;
+    try {
+      const exif = await exifr.parse(file);
+      if (exif && exif.DateTimeOriginal instanceof Date) {
+        capturedAt = Core.formatLocalDateTime(exif.DateTimeOriginal);
+        capturedAtSource = 'exif';
+      }
+    } catch (e) {}
+    if (!capturedAt) {
+      capturedAt = Core.formatLocalDateTime(new Date(file.lastModified));
+      capturedAtSource = 'lastModified';
+    }
+
+    const { thumbBlob, width, height } = await generateThumbnail(file);
+    const pageId = Core.generateId();
+    const page   = Core.createPage({
+      originalName: file.name, mime: file.type || 'image/jpeg',
+      capturedAt, capturedAtSource, width, height,
+    });
+
+    await DB.saveBlob(pageId, file);
+    await DB.saveBlob(pageId + ':thumb', thumbBlob);
+
+    if (insertAfterId) {
+      App.state = Core.insertAfterInDocument(App.state, docId, insertAfterId, pageId, page);
+    } else {
+      App.state = Core.addPageToDocument(App.state, docId, pageId, page);
+    }
+    await DB.saveState(App.state);
+  }
+
+  cameraInput.addEventListener('change', async e => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length || !_currentDocId) return;
+    try {
+      await captureAndAddToDoc(files[0], _currentDocId, null);
+      renderCurrentDoc();
+      renderDocuments();
+    } catch (err) {
+      alert('Could not import photo: ' + err.message);
+    }
+  });
+
+  // ── Add pages: gallery (time-sorted batch) ──────────────────────────────
+
+  btnAddGallery.addEventListener('click', () => { galleryInput.value = ''; galleryInput.click(); });
+
+  galleryInput.addEventListener('change', async e => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length || !_currentDocId) return;
+
+    // Read EXIF for all files and sort by capturedAt before appending
+    const items = await Promise.all(files.map(async file => {
+      let capturedAt, capturedAtSource;
+      try {
+        const exif = await exifr.parse(file);
+        if (exif && exif.DateTimeOriginal instanceof Date) {
+          capturedAt = Core.formatLocalDateTime(exif.DateTimeOriginal);
+          capturedAtSource = 'exif';
+        }
+      } catch (e) {}
+      if (!capturedAt) {
+        capturedAt = Core.formatLocalDateTime(new Date(file.lastModified));
+        capturedAtSource = 'lastModified';
+      }
+      return { file, capturedAt, capturedAtSource };
+    }));
+    items.sort((a, b) => a.capturedAt < b.capturedAt ? -1 : a.capturedAt > b.capturedAt ? 1 : 0);
+
+    let failCount = 0;
+    for (const { file, capturedAt, capturedAtSource } of items) {
+      try {
+        const { thumbBlob, width, height } = await generateThumbnail(file);
+        const pageId = Core.generateId();
+        const page = Core.createPage({
+          originalName: file.name, mime: file.type || 'image/jpeg',
+          capturedAt, capturedAtSource, width, height,
+        });
+        await DB.saveBlob(pageId, file);
+        await DB.saveBlob(pageId + ':thumb', thumbBlob);
+        App.state = Core.addPageToDocument(App.state, _currentDocId, pageId, page);
+      } catch (err) {
+        console.warn('Could not import', file.name, err.message);
+        failCount++;
+      }
+    }
+    await DB.saveState(App.state);
+    renderCurrentDoc();
+    renderDocuments();
+    if (failCount) alert(failCount + ' photo(s) could not be imported.');
+  });
+
+  // ── Insert-after camera capture ─────────────────────────────────────────
+
+  insertInput.addEventListener('change', async e => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length || !_currentDocId || !_insertAfterPageId) return;
+    try {
+      await captureAndAddToDoc(files[0], _currentDocId, _insertAfterPageId);
+      _insertAfterPageId = null;
+      renderCurrentDoc();
+      renderDocuments();
+    } catch (err) {
+      alert('Could not import photo: ' + err.message);
+    }
+  });
+
+  // ── Retake ──────────────────────────────────────────────────────────────
+
+  retakeInput.addEventListener('change', async e => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length || !_currentDocId || !_retakePageId) return;
+    const file    = files[0];
+    const pageId  = _retakePageId;
+    _retakePageId = null;
+
+    try {
+      let capturedAt, capturedAtSource;
+      try {
+        const exif = await exifr.parse(file);
+        if (exif && exif.DateTimeOriginal instanceof Date) {
+          capturedAt = Core.formatLocalDateTime(exif.DateTimeOriginal);
+          capturedAtSource = 'exif';
+        }
+      } catch (e) {}
+      if (!capturedAt) {
+        capturedAt = Core.formatLocalDateTime(new Date(file.lastModified));
+        capturedAtSource = 'lastModified';
+      }
+      const { thumbBlob, width, height } = await generateThumbnail(file);
+      const newPage = Core.createPage({
+        originalName: file.name, mime: file.type || 'image/jpeg',
+        capturedAt, capturedAtSource, width, height,
+      });
+      // Replace blobs (same pageId, so existing DB keys overwritten)
+      await DB.saveBlob(pageId, file);
+      await DB.saveBlob(pageId + ':thumb', thumbBlob);
+      App.state = Core.retakePage(App.state, pageId, newPage);
+      await DB.saveState(App.state);
+      renderCurrentDoc();
+    } catch (err) {
+      alert('Could not retake photo: ' + err.message);
+    }
+  });
+
+}());
 </script>
 
 </body>

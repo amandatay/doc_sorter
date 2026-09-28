@@ -312,3 +312,236 @@ test('sortedInboxEntries returns inbox sorted by time', () => {
 test('sortedInboxEntries returns empty for empty inbox', () => {
   assert.deepEqual(Core.sortedInboxEntries(Core.createState()), []);
 });
+
+// ── rotatePage ──────────────────────────────────────────────────────────────
+
+test('rotatePage advances rotation 0→90→180→270→0', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  s = Core.rotatePage(s, id);
+  assert.equal(s.pages[id].rotation, 90);
+  s = Core.rotatePage(s, id);
+  assert.equal(s.pages[id].rotation, 180);
+  s = Core.rotatePage(s, id);
+  assert.equal(s.pages[id].rotation, 270);
+  s = Core.rotatePage(s, id);
+  assert.equal(s.pages[id].rotation, 0);
+});
+
+test('rotatePage does not mutate input state', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  const before = s.pages[id].rotation;
+  Core.rotatePage(s, id);
+  assert.equal(s.pages[id].rotation, before);
+});
+
+test('rotatePage throws for unknown pageId', () => {
+  assert.throws(() => Core.rotatePage(Core.createState(), 'bad-id'), /pageId/);
+});
+
+test('rotatePage result passes validateState', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  assert.deepEqual(Core.validateState(Core.rotatePage(s, id)), []);
+});
+
+// ── removePageFromInbox ─────────────────────────────────────────────────────
+
+test('removePageFromInbox removes from inbox and pages', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  s = Core.removePageFromInbox(s, id);
+  assert.ok(!s.inbox.includes(id));
+  assert.ok(!s.pages[id]);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('removePageFromInbox does not mutate input', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  Core.removePageFromInbox(s, id);
+  assert.ok(s.inbox.includes(id));
+});
+
+test('removePageFromInbox preserves other pages', () => {
+  let s = Core.createState();
+  const id1 = Core.generateId();
+  const id2 = Core.generateId();
+  s = Core.addPageToInbox(s, id1, makePage());
+  s = Core.addPageToInbox(s, id2, makePage());
+  s = Core.removePageFromInbox(s, id1);
+  assert.ok(s.inbox.includes(id2));
+  assert.ok(s.pages[id2]);
+});
+
+// ── addDocument ─────────────────────────────────────────────────────────────
+
+test('addDocument appends a document to state', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { title: 'Test Doc' });
+  assert.equal(s.documents.length, 1);
+  assert.equal(s.documents[0].title, 'Test Doc');
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+// ── movePageToDocument ──────────────────────────────────────────────────────
+
+test('movePageToDocument removes from inbox and adds to doc', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  s = Core.addDocument(s, { title: 'Doc A' });
+  const docId = s.documents[0].id;
+  s = Core.movePageToDocument(s, id, docId);
+  assert.ok(!s.inbox.includes(id));
+  assert.ok(s.documents[0].pageIds.includes(id));
+  assert.ok(s.pages[id]); // page object stays
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('movePageToDocument throws for unknown docId', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  assert.throws(() => Core.movePageToDocument(s, id, 'bad-doc'), /docId/);
+});
+
+test('movePageToDocument does not mutate input', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage());
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  const before = s.inbox.slice();
+  Core.movePageToDocument(s, id, docId);
+  assert.deepEqual(s.inbox, before);
+});
+
+// ── addPageToDocument ───────────────────────────────────────────────────────
+
+test('addPageToDocument adds page to doc and pages map', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { title: 'Doc B' });
+  const docId = s.documents[0].id;
+  const id = Core.generateId();
+  s = Core.addPageToDocument(s, docId, id, makePage());
+  assert.ok(s.documents[0].pageIds.includes(id));
+  assert.ok(s.pages[id]);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('addPageToDocument throws for unknown docId', () => {
+  assert.throws(
+    () => Core.addPageToDocument(Core.createState(), 'bad', Core.generateId(), makePage()),
+    /docId/
+  );
+});
+
+// ── insertAfterInDocument ───────────────────────────────────────────────────
+
+test('insertAfterInDocument inserts page after given page', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  const id1 = Core.generateId();
+  const id2 = Core.generateId();
+  const id3 = Core.generateId();
+  s = Core.addPageToDocument(s, docId, id1, makePage());
+  s = Core.addPageToDocument(s, docId, id2, makePage());
+  s = Core.insertAfterInDocument(s, docId, id1, id3, makePage());
+  assert.deepEqual(s.documents[0].pageIds, [id1, id3, id2]);
+  assert.ok(s.pages[id3]);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('insertAfterInDocument inserts after last page', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  const id1 = Core.generateId();
+  const id2 = Core.generateId();
+  s = Core.addPageToDocument(s, docId, id1, makePage());
+  s = Core.insertAfterInDocument(s, docId, id1, id2, makePage());
+  assert.deepEqual(s.documents[0].pageIds, [id1, id2]);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('insertAfterInDocument throws for unknown docId', () => {
+  assert.throws(
+    () => Core.insertAfterInDocument(Core.createState(), 'bad', 'a', 'b', makePage()),
+    /docId/
+  );
+});
+
+test('insertAfterInDocument throws for unknown afterId', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  assert.throws(
+    () => Core.insertAfterInDocument(s, s.documents[0].id, 'ghost', Core.generateId(), makePage()),
+    /afterId/
+  );
+});
+
+// ── retakePage ──────────────────────────────────────────────────────────────
+
+test('retakePage replaces page object in-place', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage({ originalName: 'old.jpg' }));
+  s = Core.retakePage(s, id, makePage({ originalName: 'new.jpg' }));
+  assert.equal(s.pages[id].originalName, 'new.jpg');
+  assert.ok(s.inbox.includes(id)); // still in inbox
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('retakePage throws for unknown pageId', () => {
+  assert.throws(() => Core.retakePage(Core.createState(), 'ghost', makePage()), /pageId/);
+});
+
+test('retakePage does not mutate input', () => {
+  let s = Core.createState();
+  const id = Core.generateId();
+  s = Core.addPageToInbox(s, id, makePage({ originalName: 'old.jpg' }));
+  Core.retakePage(s, id, makePage({ originalName: 'new.jpg' }));
+  assert.equal(s.pages[id].originalName, 'old.jpg');
+});
+
+// ── deletePageFromDocument ──────────────────────────────────────────────────
+
+test('deletePageFromDocument removes page from doc and pages map', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  const id = Core.generateId();
+  s = Core.addPageToDocument(s, docId, id, makePage());
+  s = Core.deletePageFromDocument(s, docId, id);
+  assert.ok(!s.documents[0].pageIds.includes(id));
+  assert.ok(!s.pages[id]);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('deletePageFromDocument preserves other pages in doc', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, {});
+  const docId = s.documents[0].id;
+  const id1 = Core.generateId();
+  const id2 = Core.generateId();
+  s = Core.addPageToDocument(s, docId, id1, makePage());
+  s = Core.addPageToDocument(s, docId, id2, makePage());
+  s = Core.deletePageFromDocument(s, docId, id1);
+  assert.deepEqual(s.documents[0].pageIds, [id2]);
+  assert.ok(s.pages[id2]);
+});
+
+test('deletePageFromDocument throws for unknown docId', () => {
+  assert.throws(
+    () => Core.deletePageFromDocument(Core.createState(), 'bad', 'p1'),
+    /docId/
+  );
+});

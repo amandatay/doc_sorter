@@ -205,6 +205,161 @@ const Core = {
     );
   },
 
+  /**
+   * Advances a page's rotation by 90° clockwise (0→90→180→270→0).
+   * @param {object} state
+   * @param {string} pageId
+   */
+  rotatePage(state, pageId) {
+    const page = state.pages[pageId];
+    if (!page) throw new Error(`rotatePage: pageId "${pageId}" not found`);
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      pages: { ...state.pages, [pageId]: { ...page, rotation: (page.rotation + 90) % 360 } },
+    };
+  },
+
+  /**
+   * Removes a page from the inbox and the pages map.
+   * Caller is responsible for deleting the associated blobs from IndexedDB.
+   * @param {object} state
+   * @param {string} pageId
+   */
+  removePageFromInbox(state, pageId) {
+    const pages = { ...state.pages };
+    delete pages[pageId];
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      pages,
+      inbox: state.inbox.filter(id => id !== pageId),
+    };
+  },
+
+  /**
+   * Moves a page from the inbox to the end of a document's pageIds.
+   * The page object stays in state.pages unchanged.
+   * @param {object} state
+   * @param {string} pageId
+   * @param {string} docId
+   */
+  movePageToDocument(state, pageId, docId) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`movePageToDocument: docId "${docId}" not found`);
+    const now = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt: now,
+      inbox: state.inbox.filter(id => id !== pageId),
+      documents: state.documents.map(d =>
+        d.id === docId ? { ...d, pageIds: [...d.pageIds, pageId], updatedAt: now } : d
+      ),
+    };
+  },
+
+  /**
+   * Adds a new page directly to the end of a document (e.g. captured via camera).
+   * @param {object} state
+   * @param {string} docId
+   * @param {string} pageId
+   * @param {object} page - from createPage()
+   */
+  addPageToDocument(state, docId, pageId, page) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`addPageToDocument: docId "${docId}" not found`);
+    const now = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt: now,
+      pages: { ...state.pages, [pageId]: page },
+      documents: state.documents.map(d =>
+        d.id === docId ? { ...d, pageIds: [...d.pageIds, pageId], updatedAt: now } : d
+      ),
+    };
+  },
+
+  /**
+   * Inserts a new page immediately after afterId in a document.
+   * @param {object} state
+   * @param {string} docId
+   * @param {string} afterId  - existing pageId to insert after
+   * @param {string} newId    - new pageId
+   * @param {object} newPage  - from createPage()
+   */
+  insertAfterInDocument(state, docId, afterId, newId, newPage) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`insertAfterInDocument: docId "${docId}" not found`);
+    const idx = doc.pageIds.indexOf(afterId);
+    if (idx === -1) throw new Error(`insertAfterInDocument: afterId "${afterId}" not in doc`);
+    const newPageIds = [...doc.pageIds];
+    newPageIds.splice(idx + 1, 0, newId);
+    const now = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt: now,
+      pages: { ...state.pages, [newId]: newPage },
+      documents: state.documents.map(d =>
+        d.id === docId ? { ...d, pageIds: newPageIds, updatedAt: now } : d
+      ),
+    };
+  },
+
+  /**
+   * Replaces a page's data in-place (used by Retake — keeps the pageId and its position).
+   * Caller is responsible for updating the blobs in IndexedDB.
+   * @param {object} state
+   * @param {string} pageId
+   * @param {object} newPage - from createPage()
+   */
+  retakePage(state, pageId, newPage) {
+    if (!Object.prototype.hasOwnProperty.call(state.pages, pageId)) {
+      throw new Error(`retakePage: pageId "${pageId}" not found`);
+    }
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      pages: { ...state.pages, [pageId]: newPage },
+    };
+  },
+
+  /**
+   * Removes a page from a document and from the pages map.
+   * Caller is responsible for deleting the associated blobs from IndexedDB.
+   * @param {object} state
+   * @param {string} docId
+   * @param {string} pageId
+   */
+  deletePageFromDocument(state, docId, pageId) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`deletePageFromDocument: docId "${docId}" not found`);
+    const pages = { ...state.pages };
+    delete pages[pageId];
+    const now = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt: now,
+      pages,
+      documents: state.documents.map(d =>
+        d.id === docId ? { ...d, pageIds: d.pageIds.filter(id => id !== pageId), updatedAt: now } : d
+      ),
+    };
+  },
+
+  /**
+   * Creates a new document and adds it to state.documents.
+   * @param {object} state
+   * @param {object} [fields] - passed to createDocument()
+   */
+  addDocument(state, fields) {
+    const doc = this.createDocument(fields);
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      documents: [...state.documents, doc],
+    };
+  },
+
 };
 
 if (typeof module !== 'undefined') module.exports = Core;
