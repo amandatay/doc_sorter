@@ -4,6 +4,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## [M1] — 2026-09-27
+### Added
+- App header bar with settings button
+- Settings panel showing storage persistence status and storage used
+- State is now saved to IndexedDB and survives app restarts
+
 ## [M0] — 2026-09-27
 ### Added
 - App shell with Documents and Inbox screens and bottom navigation
