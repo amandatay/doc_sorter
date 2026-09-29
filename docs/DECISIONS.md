@@ -1,5 +1,17 @@
 # Decisions
 
+## D010 — PDF export saves to Downloads, not Web Share API (20260929)
+- **Context**: M8 PDF export originally used `navigator.share({ files: [pdfFile] })` to open the Android share sheet. PDF was confirmed to save correctly but opened blank in Android PDF viewers when received via the share sheet.
+- **Decision**: Save the PDF directly to Downloads via a `<a download>` click. Confirmed working on device.
+- **Alternatives**: Web Share API (rejected: blank pages in receiving apps on Android). No obvious workaround found.
+- **Consequences**: PDF lands in Downloads folder. User can then open, move, or share it from there. No direct-to-WhatsApp in one step, but reliable.
+
+## D011 — PDF image pipeline: FileReader blob → data URL (20260929)
+- **Context**: Three canvas-based approaches all produced blank/near-empty PDFs: (1) blob URL passed to jsPDF, (2) canvas element passed to jsPDF, (3) `canvas.toDataURL()`. All failed on Android Chrome.
+- **Decision**: Read the stored JPEG blob from IndexedDB via `FileReader.readAsDataURL()` and pass the resulting data URL to `pdf.addImage()`. No canvas involved.
+- **Alternatives**: Canvas approaches (all failed silently on Android). Root cause unknown — likely canvas security/rendering restrictions in a PWA context.
+- **Consequences**: PDF export uses full-resolution blobs (no downscaling). File size may be large for multi-page documents; acceptable for Phase 1.
+
 ## D001 — No build step; classic script tags (20260927)
 - **Context**: Need simple deployment to GitHub Pages with no CI pipeline. App must also open via `file://` in Phase 2.
 - **Decision**: Vanilla JS with classic `<script>` tags. No bundler, no TypeScript, no ES modules.

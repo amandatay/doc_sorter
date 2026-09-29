@@ -2275,7 +2275,8 @@ async function renderInbox() {
 
       exportProgressFill.style.width = '100%';
 
-      // Force download — bypasses Web Share API for debugging blank-page issue
+      // Save to device Downloads. Web Share API tried and rejected (D010):
+      // sharing a jsPDF File object causes blank pages in Android PDF viewers.
       const a   = document.createElement('a');
       a.href    = URL.createObjectURL(new File([pdfBlob], filename, { type: 'application/pdf' }));
       a.download = filename;

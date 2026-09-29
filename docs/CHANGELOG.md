@@ -8,9 +8,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Export document as PDF (📄 button in document detail header)
 - PDF is A4, one page per image, image fitted and centred with 10 mm margins
-- Each image downscaled to 2000 px long edge and respects the stored rotation
-- Exported via Android share sheet (save to Files, send to WhatsApp, etc.); falls back to download link if share API is unavailable
+- Exported PDF saved directly to device Downloads folder
 - Share photos directly into DocSorter from Google Photos / Gallery via the share sheet — photos land in the Inbox automatically
+### Changed
+- PDF export saves to Downloads (not the share sheet) — Web Share API caused blank pages in Android PDF viewers (see D010)
 
 ## [M5+M7] — 2026-09-28
 ### Added

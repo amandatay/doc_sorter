@@ -1,15 +1,21 @@
 # Progress
 
-## Current milestone: M5+M7 — Reorder + Naming (status: Done ✓ — confirmed on device 20260928)
-## Next milestone: M8+M9 — PDF export + share target (status: In progress — awaiting device test)
+## Current milestone: M8+M9 — PDF export + share target (status: M8 Done ✓ confirmed on device 20260929 — M9 share target awaiting device test)
+## Next milestone: —
 
 ## Log
 
-### 20260928 — M8+M9 PDF export + share target
-- **Did**: PDF export (📄 button in document detail) — jsPDF 2.5.2 UMD min, renders each page to JPEG (2000px long edge, JPEG 0.85), respects stored rotation, A4 with 10mm margins, shares via Web Share API (falls back to download). Share target (M9): sw.js now reads FormData files from POST, stashes each as a Response in `docsorter-share-queue` cache, redirects to app; app drains queue on startup when `?shared=1` in URL and imports to inbox. No new core.js functions needed. sw.js CACHE_VERSION → 7.
+### 20260929 — M8 PDF export fix (save to Downloads)
+- **Did**: Fixed blank PDF export. Root causes: (1) canvas.toDataURL() silently failed on Android Chrome in a PWA context — switched to FileReader.readAsDataURL() reading the blob directly from IndexedDB (D011). (2) Web Share API caused blank pages in Android PDF viewers — switched to `<a download>` saving directly to Downloads folder (D010). Both fixes confirmed working on device. sw.js CACHE_VERSION → 11.
+- **Files**: `index.html`, `sw.js`, `docs/PROGRESS.md`, `docs/CHANGELOG.md`, `docs/DECISIONS.md`
+- **Tested**: `node --test` → 89/89. PDF export confirmed on device 20260929.
+- **Next**: M9 share target — needs device test (receive shared photos from Gallery).
+
+### 20260928 — M8+M9 PDF export + share target (initial)
+- **Did**: PDF export (📄 button in document detail) — jsPDF 2.5.2 UMD min, respects stored rotation, A4 with 10mm margins. Share target (M9): sw.js now reads FormData files from POST, stashes each as a Response in `docsorter-share-queue` cache, redirects to app; app drains queue on startup when `?shared=1` in URL and imports to inbox. No new core.js functions needed. sw.js CACHE_VERSION → 9.
 - **Files**: `index.html`, `sw.js`, `vendor/jspdf/jspdf.umd.min.js`, `docs/PROGRESS.md`, `docs/CHANGELOG.md`, `docs/DECISIONS.md`
 - **Tested**: `node --test` → 89/89. Manual checklist below to run on Android.
-- **Next**: Done — all Phase 1 milestones complete. Polish pass if needed.
+- **Next**: Fix blank PDF pages (see 20260929 entry above).
 
 ### 20260928 — M5+M7 reorder + naming
 - **Did**: Reorder toolbar (Reverse, Sort by time, Tap-to-number mode with Apply/Cancel/Undo). Move up/down in per-page action sheet. Metadata editor sheet (✎ button): title, category chips with custom option, YYYYMMDD date with live validation, live filename preview. Core additions: reorderPages, reverseDocPages, sortDocPagesByTime, buildFilename, updateDocumentMeta, addCategory — 89 unit tests, all passing. sw.js CACHE_VERSION → 6. M6 (inbox grouping) skipped per user request.
