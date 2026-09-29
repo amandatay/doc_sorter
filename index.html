@@ -2267,25 +2267,22 @@ async function renderInbox() {
         pdf.addImage(dataUrl, 'JPEG', rx, ry, rw, rh, undefined, 'FAST', rot);
       }
 
-      exportStatus.textContent = 'Sharing…';
+      exportStatus.textContent = 'Saving…';
       exportProgressFill.style.width = '95%';
 
       const filename = (Core.buildFilename(doc) || 'DocSorter') + '.pdf';
       const pdfBlob  = pdf.output('blob');
-      const pdfFile  = new File([pdfBlob], filename, { type: 'application/pdf' });
 
       exportProgressFill.style.width = '100%';
 
-      // Try Web Share API first; fall back to download link
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({ files: [pdfFile], title: doc.title || 'DocSorter' });
-      } else {
-        const a   = document.createElement('a');
-        a.href    = URL.createObjectURL(pdfFile);
-        a.download = filename;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-      }
+      // Force download — bypasses Web Share API for debugging blank-page issue
+      const a   = document.createElement('a');
+      a.href    = URL.createObjectURL(new File([pdfBlob], filename, { type: 'application/pdf' }));
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
     } catch (err) {
       // AbortError means user dismissed the share sheet — not an error
       if (err && err.name !== 'AbortError') {

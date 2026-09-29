@@ -1,7 +1,7 @@
 /* Service worker — offline cache + share-target handler (M9).
  * Bump CACHE_VERSION whenever any cached file changes. */
 
-const CACHE_VERSION = 10;
+const CACHE_VERSION = 11;
 const CACHE_NAME = 'docsorter-v' + CACHE_VERSION;
 const SHARE_QUEUE = 'docsorter-share-queue';
 
