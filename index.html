@@ -2190,13 +2190,41 @@ async function renderInbox() {
   // ── PDF export ───────────────────────────────────────────────────────────
 
   // Converts a Blob to a base64 data URL using FileReader.
-  // More reliable than canvas.toDataURL on Android — no canvas required.
   function blobToDataUrl(blob) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload  = () => resolve(reader.result);
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(blob);
+    });
+  }
+
+  // Physically rotates a data URL by `rotation` degrees CW on a canvas.
+  // Returns a new JPEG data URL sized to the rotated dimensions (max 2000px long edge).
+  // Avoids jsPDF's rotation parameter, whose pivot math causes strips/clipping.
+  function rotateDataUrl(dataUrl, rotation, origW, origH) {
+    return new Promise((resolve) => {
+      if (!rotation) { resolve(dataUrl); return; }
+      const img = new Image();
+      img.onload = () => {
+        const swap   = rotation === 90 || rotation === 270;
+        const outW   = swap ? origH : origW;
+        const outH   = swap ? origW : origH;
+        const scale  = Math.min(1, 2000 / Math.max(outW, outH));
+        const cw     = Math.round(outW * scale);
+        const ch     = Math.round(outH * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width  = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(cw / 2, ch / 2);
+        ctx.rotate(rotation * Math.PI / 180);
+        ctx.drawImage(img, -(img.naturalWidth * scale) / 2, -(img.naturalHeight * scale) / 2,
+                      img.naturalWidth * scale, img.naturalHeight * scale);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
     });
   }
 
@@ -2223,17 +2251,18 @@ async function renderInbox() {
         const blob = await DB.loadBlob(pageId);
         if (!blob) continue;
 
-        // Read blob as data URL — bypasses canvas entirely
-        const dataUrl = await blobToDataUrl(blob);
+        const pageData = App.state.pages[pageId];
+        const rotation = pageData ? pageData.rotation : 0;
+        const rawW     = pageData ? pageData.width  : 1000;
+        const rawH     = pageData ? pageData.height : 1000;
 
-        // Use stored dimensions (post-EXIF-correction). Swap for 90/270 user rotation.
-        const pageData  = App.state.pages[pageId];
-        const rotation  = pageData ? pageData.rotation : 0;
-        const rotated90 = rotation === 90 || rotation === 270;
-        const rawW      = pageData ? pageData.width  : 1000;
-        const rawH      = pageData ? pageData.height : 1000;
-        const imgW      = rotated90 ? rawH : rawW;
-        const imgH      = rotated90 ? rawW : rawH;
+        // Pre-rotate the image on a canvas so jsPDF gets a straight image.
+        // Avoids jsPDF's rotation parameter entirely (caused strips/clipping).
+        const rawDataUrl     = await blobToDataUrl(blob);
+        const rotatedDataUrl = await rotateDataUrl(rawDataUrl, rotation, rawW, rawH);
+        const swap = rotation === 90 || rotation === 270;
+        const imgW = swap ? rawH : rawW;
+        const imgH = swap ? rawW : rawH;
 
         // A4 in mm; pick orientation to match image aspect
         const A4_W  = 210, A4_H = 297;
@@ -2247,7 +2276,7 @@ async function renderInbox() {
           pdf.addPage('a4', orient);
         }
 
-        // Fit image into page with 10 mm margins, centred
+        // Fit image into page with 10 mm margins, centred — no rotation needed
         const margin = 10;
         const maxW   = pageW - margin * 2;
         const maxH   = pageH - margin * 2;
@@ -2257,14 +2286,7 @@ async function renderInbox() {
         const x      = margin + (maxW - drawW) / 2;
         const y      = margin + (maxH - drawH) / 2;
 
-        // jsPDF rotation is counter-clockwise; negate our clockwise value.
-        // Pivot is the image's top-left, so shift (x,y) to keep image centred.
-        let rx = x, ry = y, rw = drawW, rh = drawH, rot = 0;
-        if (rotation === 90)  { rx = x + drawW; ry = y;         rw = drawH; rh = drawW; rot = -90;  }
-        if (rotation === 180) { rx = x + drawW; ry = y + drawH; rw = drawW; rh = drawH; rot = -180; }
-        if (rotation === 270) { rx = x;         ry = y + drawH; rw = drawH; rh = drawW; rot = -270; }
-
-        pdf.addImage(dataUrl, 'JPEG', rx, ry, rw, rh, undefined, 'FAST', rot);
+        pdf.addImage(rotatedDataUrl, 'JPEG', x, y, drawW, drawH, undefined, 'FAST');
       }
 
       exportStatus.textContent = 'Saving…';

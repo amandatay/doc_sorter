@@ -6,11 +6,11 @@
 - **Alternatives**: Web Share API (rejected: blank pages in receiving apps on Android). No obvious workaround found.
 - **Consequences**: PDF lands in Downloads folder. User can then open, move, or share it from there. No direct-to-WhatsApp in one step, but reliable.
 
-## D011 — PDF image pipeline: FileReader blob → data URL (20260929)
-- **Context**: Three canvas-based approaches all produced blank/near-empty PDFs: (1) blob URL passed to jsPDF, (2) canvas element passed to jsPDF, (3) `canvas.toDataURL()`. All failed on Android Chrome.
-- **Decision**: Read the stored JPEG blob from IndexedDB via `FileReader.readAsDataURL()` and pass the resulting data URL to `pdf.addImage()`. No canvas involved.
-- **Alternatives**: Canvas approaches (all failed silently on Android). Root cause unknown — likely canvas security/rendering restrictions in a PWA context.
-- **Consequences**: PDF export uses full-resolution blobs (no downscaling). File size may be large for multi-page documents; acceptable for Phase 1.
+## D011 — PDF image pipeline: FileReader → canvas rotate → jsPDF (20260929)
+- **Context**: Three canvas-based approaches produced blank PDFs. Switched to FileReader data URL which fixed blank pages, but jsPDF's `rotation` parameter in `addImage` caused strips/clipping on rotated pages (pivot math is error-prone).
+- **Decision**: Read blob via `FileReader.readAsDataURL()`, then physically rotate on a canvas (with `img.onload` — loads correctly from a data URL), then pass the rotated JPEG data URL to `pdf.addImage()` with no rotation parameter. Canvas scales to max 2000px long edge.
+- **Alternatives**: jsPDF rotation parameter (causes strips — pivot is top-left, hard to get right). Full canvas pipeline earlier (failed because img.naturalWidth was 0 — image not yet loaded when canvas draw was called; that bug is now avoided by waiting for onload after setting img.src to a data URL).
+- **Consequences**: Each page does two async steps (FileReader + canvas). Acceptable for Phase 1. Images scaled to ≤2000px keeps PDF file size manageable.
 
 ## D001 — No build step; classic script tags (20260927)
 - **Context**: Need simple deployment to GitHub Pages with no CI pipeline. App must also open via `file://` in Phase 2.
