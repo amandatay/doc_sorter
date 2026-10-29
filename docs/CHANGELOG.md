@@ -4,6 +4,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Added
+- **Folders**: organise documents into named folders. Tap 📁 (above the + button) to create a folder. Tap ⋮ on a document card to move it into a folder. Tap ⋮ on a folder header to rename or delete it. Documents not in any folder appear under "Unfiled".
+- Delete document: tap ⋮ on any document card to delete it; tap Undo within 4 s to restore
+### Removed
+- Inbox tab removed from navigation (Inbox was the staging area for imported photos before moving them into documents; it is no longer needed as a separate screen)
+### Fixed
+- "+" FAB no longer reappears over an open document when tapping the Documents nav area
+
 ## [M8+M9] — 2026-09-28
 ### Added
 - Export document as PDF (📄 button in document detail header)

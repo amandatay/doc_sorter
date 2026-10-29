@@ -1,9 +1,67 @@
 # Progress
 
-## Current milestone: M8+M9 — PDF export + share target (status: M8 Done ✓ confirmed on device 20260929 — M9 share target awaiting device test)
+## Current milestone: Folders (status: Done — awaiting device test)
 ## Next milestone: —
 
 ## Log
+
+### 20261029 — Folders (schema v2)
+- **Did**: Folders feature. Data model: `folders: [{id, name, documentIds[], createdAt, updatedAt}]` added to state, schemaVersion 1→2 with migration. Core: `createFolder`, `addFolder`, `renameFolder`, `deleteFolder`, `moveDocumentToFolder`; `deleteDocument` now also removes the doc from any folder; `validateState` checks folder invariants. 24 new unit tests (117 total). UI: second FAB (📁, above +) creates a folder via prompt; folder section headers show name + doc count + ⋮; ⋮ on folder → rename/delete with undo; ⋮ on doc card → "Move to folder" picker sheet (shows folders + Unfiled, checkmark on current); docs indented under their folder; "Unfiled" section divider shown when folders exist. sw.js CACHE_VERSION → 14.
+- **Files**: `core.js`, `tests/core.test.js`, `index.html`, `sw.js`, `docs/PROGRESS.md`, `docs/CHANGELOG.md`, `docs/DECISIONS.md`, `docs/MANIFEST_SCHEMA.md`
+- **Tested**: `node --test` → 117/117.
+- **Next**: Manual checklist below, then device test.
+
+### Manual test checklist — Folders + UI polish 20261029
+
+#### Migration (existing data)
+- [ ] Open app with existing documents → app loads, all existing documents visible and intact
+- [ ] Settings → Schema version shows "2"
+
+#### Folders
+- [ ] Tap 📁 FAB (above + button) → prompt appears for folder name
+- [ ] Enter a name → folder section header appears in the list with the name and "(0)"
+- [ ] Tap ⋮ on the folder header → action sheet: Rename folder / Delete folder
+- [ ] Tap Rename → prompt shows current name; change it → header name updates
+- [ ] Tap ⋮ on a document card → "Move to folder" option visible
+- [ ] Tap "Move to folder" → picker sheet shows folder name + Unfiled option with checkmarks
+- [ ] Tap a folder in the picker → document moves under that folder section (indented card)
+- [ ] Folder header count updates (e.g. "(1)")
+- [ ] Tap "Move to folder" on an already-filed doc → current folder has ✓; tap another folder → doc moves
+- [ ] Tap "Unfiled" in picker → doc returns to Unfiled section
+- [ ] Unfiled section divider only appears when at least one folder exists and at least one doc is unfiled
+- [ ] Tap ⋮ → Delete folder → folder header disappears; its documents appear in Unfiled
+- [ ] Undo within 4 s → folder and its documents restored to the folder
+
+#### Delete document
+- [ ] Tap ⋮ on doc card → "Delete document"
+- [ ] Delete a doc that was in a folder → doc gone; folder count decrements
+- [ ] Undo → doc reappears in the folder
+
+#### FAB fix
+- [ ] Open a document detail view → 📁 FAB and + FAB are both hidden
+- [ ] Press back → both FABs reappear
+
+### 20261029 — UI polish: delete document, remove Inbox tab, FAB fix
+- **Did**: (1) Added `Core.deleteDocument` — removes document and all its pages from state; 4 new tests (93 total). (2) Delete document: ⋮ button on each document card opens a doc action sheet with "Delete document"; delete uses same undo-snackbar pattern as page delete (4 s window). (3) Removed Inbox tab from nav; `<nav>` element removed; Inbox screen kept hidden in DOM for share-target import. FAB `bottom` CSS updated (removed 56 px nav offset). (4) Fixed FAB re-appearing when tapping the Documents nav area while inside a document — `showScreen` now checks if detail view is open. (5) Share target now stays on Documents screen instead of switching to hidden Inbox. sw.js CACHE_VERSION → 13.
+- **Files**: `core.js`, `tests/core.test.js`, `index.html`, `sw.js`, `docs/PROGRESS.md`, `docs/CHANGELOG.md`, `docs/DECISIONS.md`
+- **Tested**: `node --test` → 93/93.
+- **Next**: Manual checklist below to run on Android.
+
+### Manual test checklist — UI polish 20261029
+
+#### Delete document
+- [ ] Open app → document list visible, no bottom nav (Inbox gone)
+- [ ] Tap ⋮ on a document card → action sheet slides up with "Delete document"
+- [ ] Tap "Delete document" → document disappears from list; "Document deleted." snackbar appears
+- [ ] Tap Undo within 4 s → document reappears in the list
+- [ ] Let snackbar expire without tapping Undo → document stays deleted, reopen app → still gone
+
+#### FAB fix
+- [ ] Open a document → "+" FAB is not visible
+- [ ] Go back to document list → "+" FAB reappears in bottom-right
+
+#### Inbox removed
+- [ ] No Inbox tab anywhere in the UI
 
 ### 20260929 — M8 PDF export fix (save to Downloads)
 - **Did**: Fixed blank PDF export. Root causes: (1) canvas.toDataURL() silently failed on Android Chrome in a PWA context — switched to FileReader.readAsDataURL() reading the blob directly from IndexedDB (D011). (2) Web Share API caused blank pages in Android PDF viewers — switched to `<a download>` saving directly to Downloads folder (D010). Both fixes confirmed working on device. sw.js CACHE_VERSION → 11.

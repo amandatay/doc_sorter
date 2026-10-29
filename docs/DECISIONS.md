@@ -1,5 +1,17 @@
 # Decisions
 
+## D013 — Folder membership lives on the folder, not the document (20261029)
+- **Context**: Two options for modelling folder membership: (A) a `folderId` field on the Document, or (B) a `documentIds` array on the Folder.
+- **Decision**: Option B — `documentIds` on the Folder. This keeps the Document schema unchanged, avoids an orphaned `folderId` if a folder is deleted, and makes it trivial to enforce the invariant "a document is in at most one folder" in `validateState`.
+- **Alternatives**: Option A (folderId on document) — simpler lookup but requires checking all documents when deleting a folder. Multi-folder membership would require a join table (not needed here).
+- **Consequences**: `moveDocumentToFolder` must scan all folders to remove the doc before adding it to the target. Acceptable — folder counts will be small.
+
+## D012 — Inbox tab removed; Inbox screen kept hidden in DOM (20261029)
+- **Context**: The Inbox was a staging area for photos imported before being assigned to a document. The user determined it's no longer needed as a visible screen.
+- **Decision**: Remove the bottom-nav `<nav>` element entirely (only one tab was left after removing Inbox, making navigation pointless). The `#screen-inbox` div stays in the DOM (hidden) so the M9 share-target code can still import via `handleImport` without crashing. Share target now stays on the Documents screen after import rather than switching to the hidden Inbox.
+- **Alternatives**: Keep nav with one tab (redundant chrome). Remove screen-inbox from DOM (would require larger share-target refactor).
+- **Consequences**: Photos shared via the Android share sheet still land in `App.state.inbox` but the user cannot see them in the UI. This is acceptable until a proper "import shared photos into a document" flow is built.
+
 ## D010 — PDF export saves to Downloads, not Web Share API (20260929)
 - **Context**: M8 PDF export originally used `navigator.share({ files: [pdfFile] })` to open the Android share sheet. PDF was confirmed to save correctly but opened blank in Android PDF viewers when received via the share sheet.
 - **Decision**: Save the PDF directly to Downloads via a `<a download>` click. Confirmed working on device.

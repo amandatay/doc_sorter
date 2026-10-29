@@ -27,10 +27,11 @@ test('generateId returns unique values', () => {
 
 test('createState has correct shape', () => {
   const s = Core.createState();
-  assert.equal(s.schemaVersion, 1);
+  assert.equal(s.schemaVersion, 2);
   assert.equal(s.app, 'docsorter');
   assert.deepEqual(s.pages, {});
   assert.deepEqual(s.documents, []);
+  assert.deepEqual(s.folders, []);
   assert.deepEqual(s.inbox, []);
   assert.ok(Array.isArray(s.categories) && s.categories.length > 0);
   assert.ok(typeof s.updatedAt === 'string');
@@ -731,4 +732,257 @@ test('addCategory trims whitespace', () => {
   const s = Core.addCategory(Core.createState(), '  Legal  ');
   assert.ok(s.categories.includes('Legal'));
   assert.ok(!s.categories.includes('  Legal  '));
+});
+
+// ── deleteDocument ─────────────────────────────────────────────────────────────
+
+test('deleteDocument removes document and its pages', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { title: 'ToDelete' });
+  const docId = s.documents[0].id;
+  s = Core.addPageToDocument(s, docId, 'p1', makePage());
+  s = Core.addPageToDocument(s, docId, 'p2', makePage());
+  s = Core.deleteDocument(s, docId);
+  assert.strictEqual(s.documents.length, 0);
+  assert.strictEqual(s.pages['p1'], undefined);
+  assert.strictEqual(s.pages['p2'], undefined);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('deleteDocument leaves other documents intact', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { title: 'Keep' });
+  s = Core.addDocument(s, { title: 'Delete' });
+  const keepId   = s.documents[0].id;
+  const deleteId = s.documents[1].id;
+  s = Core.addPageToDocument(s, keepId,   'pk', makePage());
+  s = Core.addPageToDocument(s, deleteId, 'pd', makePage());
+  s = Core.deleteDocument(s, deleteId);
+  assert.strictEqual(s.documents.length, 1);
+  assert.strictEqual(s.documents[0].id, keepId);
+  assert.ok(s.pages['pk']);
+  assert.strictEqual(s.pages['pd'], undefined);
+});
+
+test('deleteDocument throws for unknown docId', () => {
+  assert.throws(() => Core.deleteDocument(Core.createState(), 'notreal'), /deleteDocument/);
+});
+
+test('deleteDocument does not mutate input', () => {
+  let s = Core.createState();
+  s = Core.addDocument(s, { title: 'Doc' });
+  const docId = s.documents[0].id;
+  const before = JSON.stringify(s);
+  Core.deleteDocument(s, docId);
+  assert.strictEqual(JSON.stringify(s), before);
+});
+
+test('deleteDocument removes document from its folder', () => {
+  let s = Core.createState();
+  s = Core.addFolder(s, { name: 'F1' });
+  const folderId = s.folders[0].id;
+  s = Core.addDocument(s, { title: 'Doc' });
+  const docId = s.documents[0].id;
+  s = Core.moveDocumentToFolder(s, docId, folderId);
+  assert.ok(s.folders[0].documentIds.includes(docId));
+  s = Core.deleteDocument(s, docId);
+  assert.strictEqual(s.folders[0].documentIds.length, 0);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+// ── applyMigrations ────────────────────────────────────────────────────────────
+
+test('applyMigrations: v1 → v2 adds folders array', () => {
+  const v1 = { schemaVersion: 1, app: 'docsorter', updatedAt: '2026-01-01T00:00:00Z',
+    pages: {}, documents: [], inbox: [], categories: [] };
+  const v2 = Core.applyMigrations(v1);
+  assert.strictEqual(v2.schemaVersion, 2);
+  assert.deepEqual(v2.folders, []);
+  assert.deepEqual(Core.validateState(v2), []);
+});
+
+test('applyMigrations: v2 is returned unchanged', () => {
+  const s = Core.createState();
+  assert.strictEqual(s.schemaVersion, 2);
+  const migrated = Core.applyMigrations(s);
+  assert.strictEqual(migrated, s);
+});
+
+test('applyMigrations: throws for unknown version', () => {
+  assert.throws(() => Core.applyMigrations({ schemaVersion: 99 }), /Unsupported/);
+});
+
+// ── createFolder ──────────────────────────────────────────────────────────────
+
+test('createFolder returns a folder with defaults', () => {
+  const f = Core.createFolder();
+  assert.ok(f.id);
+  assert.strictEqual(f.name, 'New folder');
+  assert.deepEqual(f.documentIds, []);
+  assert.ok(f.createdAt);
+  assert.ok(f.updatedAt);
+});
+
+test('createFolder uses provided name', () => {
+  assert.strictEqual(Core.createFolder({ name: 'Medical' }).name, 'Medical');
+});
+
+test('createFolder trims and falls back for blank name', () => {
+  assert.strictEqual(Core.createFolder({ name: '   ' }).name, 'New folder');
+});
+
+// ── addFolder ─────────────────────────────────────────────────────────────────
+
+test('addFolder adds folder to state', () => {
+  let s = Core.addFolder(Core.createState(), { name: 'Legal' });
+  assert.strictEqual(s.folders.length, 1);
+  assert.strictEqual(s.folders[0].name, 'Legal');
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('addFolder does not mutate input', () => {
+  const s = Core.createState();
+  const before = JSON.stringify(s);
+  Core.addFolder(s, { name: 'X' });
+  assert.strictEqual(JSON.stringify(s), before);
+});
+
+// ── renameFolder ──────────────────────────────────────────────────────────────
+
+test('renameFolder updates folder name', () => {
+  let s = Core.addFolder(Core.createState(), { name: 'Old' });
+  const id = s.folders[0].id;
+  s = Core.renameFolder(s, id, 'New');
+  assert.strictEqual(s.folders[0].name, 'New');
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('renameFolder throws for unknown folderId', () => {
+  assert.throws(() => Core.renameFolder(Core.createState(), 'nope', 'X'), /renameFolder/);
+});
+
+test('renameFolder throws for empty name', () => {
+  let s = Core.addFolder(Core.createState(), { name: 'F' });
+  const id = s.folders[0].id;
+  assert.throws(() => Core.renameFolder(s, id, ''), /non-empty/);
+  assert.throws(() => Core.renameFolder(s, id, '  '), /non-empty/);
+});
+
+test('renameFolder does not mutate input', () => {
+  let s = Core.addFolder(Core.createState(), { name: 'F' });
+  const id = s.folders[0].id;
+  const before = JSON.stringify(s);
+  Core.renameFolder(s, id, 'G');
+  assert.strictEqual(JSON.stringify(s), before);
+});
+
+// ── deleteFolder ──────────────────────────────────────────────────────────────
+
+test('deleteFolder removes folder; documents become unfiled', () => {
+  let s = Core.createState();
+  s = Core.addFolder(s, { name: 'F' });
+  const folderId = s.folders[0].id;
+  s = Core.addDocument(s, { title: 'Doc' });
+  const docId = s.documents[0].id;
+  s = Core.moveDocumentToFolder(s, docId, folderId);
+  s = Core.deleteFolder(s, folderId);
+  assert.strictEqual(s.folders.length, 0);
+  assert.strictEqual(s.documents.length, 1); // doc still exists
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('deleteFolder throws for unknown folderId', () => {
+  assert.throws(() => Core.deleteFolder(Core.createState(), 'nope'), /deleteFolder/);
+});
+
+test('deleteFolder does not mutate input', () => {
+  let s = Core.addFolder(Core.createState(), { name: 'F' });
+  const id = s.folders[0].id;
+  const before = JSON.stringify(s);
+  Core.deleteFolder(s, id);
+  assert.strictEqual(JSON.stringify(s), before);
+});
+
+// ── moveDocumentToFolder ──────────────────────────────────────────────────────
+
+test('moveDocumentToFolder adds doc to folder', () => {
+  let s = Core.createState();
+  s = Core.addFolder(s, { name: 'F' });
+  s = Core.addDocument(s, { title: 'Doc' });
+  const folderId = s.folders[0].id;
+  const docId    = s.documents[0].id;
+  s = Core.moveDocumentToFolder(s, docId, folderId);
+  assert.ok(s.folders[0].documentIds.includes(docId));
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('moveDocumentToFolder moves doc from one folder to another', () => {
+  let s = Core.createState();
+  s = Core.addFolder(s, { name: 'F1' });
+  s = Core.addFolder(s, { name: 'F2' });
+  s = Core.addDocument(s, { title: 'Doc' });
+  const [f1, f2] = s.folders;
+  const docId = s.documents[0].id;
+  s = Core.moveDocumentToFolder(s, docId, f1.id);
+  s = Core.moveDocumentToFolder(s, docId, f2.id);
+  const updated = s.folders;
+  assert.ok(!updated.find(f => f.id === f1.id).documentIds.includes(docId));
+  assert.ok( updated.find(f => f.id === f2.id).documentIds.includes(docId));
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('moveDocumentToFolder with null makes doc unfiled', () => {
+  let s = Core.createState();
+  s = Core.addFolder(s, { name: 'F' });
+  s = Core.addDocument(s, { title: 'Doc' });
+  const folderId = s.folders[0].id;
+  const docId    = s.documents[0].id;
+  s = Core.moveDocumentToFolder(s, docId, folderId);
+  s = Core.moveDocumentToFolder(s, docId, null);
+  assert.deepEqual(s.folders[0].documentIds, []);
+  assert.deepEqual(Core.validateState(s), []);
+});
+
+test('moveDocumentToFolder throws for unknown docId', () => {
+  assert.throws(() => Core.moveDocumentToFolder(Core.createState(), 'nope', null), /moveDocumentToFolder/);
+});
+
+test('moveDocumentToFolder throws for unknown folderId', () => {
+  let s = Core.addDocument(Core.createState(), { title: 'Doc' });
+  assert.throws(() => Core.moveDocumentToFolder(s, s.documents[0].id, 'nope'), /moveDocumentToFolder/);
+});
+
+test('moveDocumentToFolder does not mutate input', () => {
+  let s = Core.createState();
+  s = Core.addFolder(s, { name: 'F' });
+  s = Core.addDocument(s, { title: 'Doc' });
+  const folderId = s.folders[0].id;
+  const docId    = s.documents[0].id;
+  const before   = JSON.stringify(s);
+  Core.moveDocumentToFolder(s, docId, folderId);
+  assert.strictEqual(JSON.stringify(s), before);
+});
+
+// ── validateState: folder invariants ──────────────────────────────────────────
+
+test('validateState reports doc in two folders', () => {
+  let s = Core.createState();
+  s = Core.addFolder(s, { name: 'F1' });
+  s = Core.addFolder(s, { name: 'F2' });
+  s = Core.addDocument(s, { title: 'Doc' });
+  const docId = s.documents[0].id;
+  // Manually put doc in both folders (bypassing Core — that's what we're testing for)
+  s = {
+    ...s,
+    folders: s.folders.map(f => ({ ...f, documentIds: [docId] })),
+  };
+  const errs = Core.validateState(s);
+  assert.ok(errs.some(e => e.includes('more than one folder')));
+});
+
+test('validateState reports folder with unknown docId', () => {
+  let s = Core.addFolder(Core.createState(), { name: 'F' });
+  s = { ...s, folders: [{ ...s.folders[0], documentIds: ['ghost-id'] }] };
+  const errs = Core.validateState(s);
+  assert.ok(errs.some(e => e.includes('unknown docId')));
 });

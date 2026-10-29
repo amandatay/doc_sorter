@@ -46,39 +46,6 @@
     .screen { display: none; }
     .screen.active { display: block; }
 
-    #bottom-nav {
-      display: flex;
-      background: #fff;
-      border-top: 1px solid #e0e0e0;
-      box-shadow: 0 -2px 6px rgba(0, 0, 0, .08);
-      position: relative;
-      z-index: 10;
-    }
-
-    .nav-btn {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      min-height: 56px;
-      padding: 6px 0;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 500;
-      color: #5f6368;
-      letter-spacing: .3px;
-      -webkit-tap-highlight-color: transparent;
-      transition: color .15s;
-    }
-
-    .nav-btn.active { color: #1a73e8; }
-
-    .nav-icon { font-size: 22px; line-height: 1; }
-
     .placeholder {
       display: flex;
       flex-direction: column;
@@ -485,10 +452,52 @@
   <style>
     /* ---- Document list ---- */
     #doc-list {
-      padding: 12px 12px 80px; /* bottom: room for FAB */
+      padding: 12px;
+      padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)); /* room for two stacked FABs */
       display: flex;
       flex-direction: column;
       gap: 10px;
+    }
+
+    /* ---- Folder section header ---- */
+    .folder-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 4px 2px;
+      margin-top: 4px;
+    }
+    .folder-header-icon { font-size: 18px; flex-shrink: 0; }
+    .folder-header-name {
+      flex: 1; font-size: 13px; font-weight: 600;
+      color: #3c4043; letter-spacing: .2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .folder-header-count { font-size: 12px; color: #80868b; flex-shrink: 0; }
+    .folder-header-menu-btn {
+      background: none; border: none; font-size: 18px; color: #80868b;
+      padding: 4px 8px; min-width: 36px; min-height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+    }
+    .folder-divider {
+      font-size: 12px; font-weight: 600; color: #80868b;
+      padding: 12px 4px 4px; letter-spacing: .3px; text-transform: uppercase;
+    }
+    .doc-card-indented { margin-left: 26px; }
+
+    /* ---- Secondary FAB (new folder) ---- */
+    #btn-new-folder {
+      position: fixed;
+      bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      right: 16px;
+      width: 48px; height: 48px;
+      background: #fff; color: #1a73e8;
+      border: 2px solid #1a73e8; border-radius: 50%;
+      font-size: 22px; line-height: 1;
+      box-shadow: 0 2px 8px rgba(26,115,232,.25);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      z-index: 20;
+      display: flex; align-items: center; justify-content: center;
     }
 
     .doc-card {
@@ -528,8 +537,18 @@
     }
     .doc-card-meta { font-size: 12px; color: #5f6368; margin-top: 2px; }
 
+    .doc-card-menu-btn {
+      background: none; border: none;
+      font-size: 20px; color: #5f6368;
+      padding: 8px; min-width: 44px; min-height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+
     #btn-new-doc {
-      position: fixed; bottom: calc(56px + 16px + env(safe-area-inset-bottom, 0px)); right: 16px;
+      position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); right: 16px;
       width: 56px; height: 56px;
       background: #1a73e8; color: #fff;
       border: none; border-radius: 50%;
@@ -773,11 +792,8 @@
 
     </div>
 
-    <!-- ============================================================
-         Inbox screen (M2)
-         Import photos, view thumbnails sorted by capture time.
-         ============================================================ -->
-    <div id="screen-inbox" class="screen" role="main" aria-label="Inbox">
+    <!-- Inbox screen kept in DOM (hidden) for share-target import; not accessible via nav -->
+    <div id="screen-inbox" class="screen" role="main" aria-label="Inbox" hidden style="display:none">
 
       <div id="inbox-import-bar">
         <button id="btn-import">+ Import photos</button>
@@ -801,17 +817,6 @@
     </div>
 
   </div><!-- /screen-container -->
-
-  <nav id="bottom-nav" aria-label="Main navigation">
-    <button class="nav-btn active" data-screen="documents" aria-current="page">
-      <span class="nav-icon" aria-hidden="true">📄</span>
-      <span>Documents</span>
-    </button>
-    <button class="nav-btn" data-screen="inbox" aria-current="false">
-      <span class="nav-icon" aria-hidden="true">📥</span>
-      <span>Inbox</span>
-    </button>
-  </nav>
 
 </div><!-- /app -->
 
@@ -856,6 +861,44 @@
 </div>
 
 <!-- ============================================================
+     Document action sheet (from doc card ⋮ in list)
+     ============================================================ -->
+<div id="doc-action-backdrop" hidden aria-hidden="true"></div>
+<div id="doc-action-sheet" hidden role="dialog" aria-label="Document actions" aria-modal="true">
+  <div class="action-sheet-handle" aria-hidden="true"></div>
+  <button class="action-item" id="doc-action-move-to-folder">
+    <span class="action-item-icon" aria-hidden="true">&#128193;</span>Move to folder
+  </button>
+  <button class="action-item destructive" id="doc-action-delete">
+    <span class="action-item-icon" aria-hidden="true">&#128465;</span>Delete document
+  </button>
+</div>
+
+<!-- ============================================================
+     Folder action sheet (from folder header ⋮)
+     ============================================================ -->
+<div id="folder-action-backdrop" hidden aria-hidden="true"></div>
+<div id="folder-action-sheet" hidden role="dialog" aria-label="Folder actions" aria-modal="true">
+  <div class="action-sheet-handle" aria-hidden="true"></div>
+  <button class="action-item" id="folder-action-rename">
+    <span class="action-item-icon" aria-hidden="true">&#9998;</span>Rename folder
+  </button>
+  <button class="action-item destructive" id="folder-action-delete">
+    <span class="action-item-icon" aria-hidden="true">&#128465;</span>Delete folder
+  </button>
+</div>
+
+<!-- ============================================================
+     Move-to-folder picker sheet
+     ============================================================ -->
+<div id="move-folder-backdrop" hidden aria-hidden="true"></div>
+<div id="move-folder-sheet" hidden role="dialog" aria-label="Move to folder" aria-modal="true">
+  <div class="sheet-handle" aria-hidden="true"></div>
+  <h2 class="sheet-title">Move to folder</h2>
+  <div id="move-folder-options"></div>
+</div>
+
+<!-- ============================================================
      M4: Undo snackbar
      ============================================================ -->
 <div id="undo-snackbar" hidden role="status" aria-live="polite">
@@ -864,9 +907,12 @@
 </div>
 
 <!-- ============================================================
-     M4: New document FAB (only visible on documents screen)
+     M4: New document FAB (only visible on documents list)
      ============================================================ -->
 <button id="btn-new-doc" aria-label="New document" hidden>&#43;</button>
+
+<!-- Secondary FAB: create a new folder -->
+<button id="btn-new-folder" aria-label="New folder" hidden>&#128193;</button>
 
 <!-- ============================================================
      M1: Settings bottom sheet
@@ -885,7 +931,7 @@
   </div>
   <div class="settings-row">
     <span class="settings-label">Schema version</span>
-    <span class="settings-value">1</span>
+    <span class="settings-value">2</span>
   </div>
   <button id="btn-settings-close">Done</button>
 </div>
@@ -936,21 +982,30 @@
 (function () {
   'use strict';
 
-  const screens = document.querySelectorAll('.screen');
-  const navBtns = document.querySelectorAll('.nav-btn');
-  const fabNewDoc = document.getElementById('btn-new-doc');
+  const screens     = document.querySelectorAll('.screen');
+  const fabNewDoc   = document.getElementById('btn-new-doc');
+  const fabNewFolder = document.getElementById('btn-new-folder');
 
-  function showScreen(name) {
-    screens.forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
-    navBtns.forEach(b => {
-      const active = b.dataset.screen === name;
-      b.classList.toggle('active', active);
-      b.setAttribute('aria-current', active ? 'page' : 'false');
-    });
-    fabNewDoc.hidden = (name !== 'documents');
+  // Show FABs only on the documents list view (not inside a document detail)
+  function updateFabs(screenName) {
+    const detailOpen = !document.getElementById('doc-detail-view').hidden;
+    const show = screenName === 'documents' && !detailOpen;
+    fabNewDoc.hidden    = !show;
+    fabNewFolder.hidden = !show;
   }
 
-  navBtns.forEach(btn => btn.addEventListener('click', () => showScreen(btn.dataset.screen)));
+  window.showScreen = function showScreen(name) {
+    screens.forEach(s => {
+      const active = s.id === 'screen-' + name;
+      s.classList.toggle('active', active);
+      // keep screen-inbox permanently hidden from nav; it can only be shown programmatically
+      if (s.id === 'screen-inbox') s.classList.remove('active');
+    });
+    updateFabs(name);
+  };
+
+  // Expose so M4 openDocDetail/closeDocDetail can update FABs correctly
+  window.updateFabVisibility = function () { updateFabs('documents'); };
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => {
@@ -1488,6 +1543,7 @@ async function renderInbox() {
   const detailView     = document.getElementById('doc-detail-view');
   const listView       = document.getElementById('doc-list-view');
   const fabNewDoc      = document.getElementById('btn-new-doc');
+  const fabNewFolder   = document.getElementById('btn-new-folder');
 
   let _listURLs = [];
 
@@ -1496,61 +1552,149 @@ async function renderInbox() {
     _listURLs = [];
   }
 
+  // Builds a document card DOM element (sync); returns {card, thumbJob|null}
+  function buildDocCard(doc, indented) {
+    const card = document.createElement('div');
+    card.className = 'doc-card' + (indented ? ' doc-card-indented' : '');
+    card.setAttribute('role', 'listitem');
+    card.dataset.docId = doc.id;
+
+    let thumbJob = null;
+    const firstPageId = doc.pageIds[0];
+    if (firstPageId) {
+      const thumb = document.createElement('img');
+      thumb.className = 'doc-card-thumb';
+      thumb.alt = '';
+      const page = App.state.pages[firstPageId];
+      if (page && page.rotation) thumb.style.transform = `rotate(${page.rotation}deg)`;
+      card.appendChild(thumb);
+      thumbJob = { img: thumb, pageId: firstPageId };
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'doc-card-thumb-placeholder';
+      ph.textContent = '📄';
+      card.appendChild(ph);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'doc-card-info';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'doc-card-title';
+    titleEl.textContent = doc.title || 'Untitled';
+    const metaEl = document.createElement('div');
+    metaEl.className = 'doc-card-meta';
+    const pc = doc.pageIds.length;
+    metaEl.textContent = pc + ' page' + (pc === 1 ? '' : 's') +
+      (doc.date ? '  ·  ' + doc.date : '');
+    info.appendChild(titleEl);
+    info.appendChild(metaEl);
+    card.appendChild(info);
+
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'doc-card-menu-btn';
+    menuBtn.setAttribute('aria-label', 'Options for ' + (doc.title || 'Untitled'));
+    menuBtn.textContent = '⋮';
+    menuBtn.addEventListener('click', e => { e.stopPropagation(); openDocActionSheet(doc.id); });
+    card.appendChild(menuBtn);
+
+    card.addEventListener('click', () => openDocDetail(doc.id));
+    return { card, thumbJob };
+  }
+
+  // Builds a folder section header DOM element (sync)
+  function buildFolderHeader(folder, docCount) {
+    const hdr = document.createElement('div');
+    hdr.className = 'folder-header';
+    hdr.dataset.folderId = folder.id;
+
+    const icon = document.createElement('span');
+    icon.className = 'folder-header-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '📁';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'folder-header-name';
+    nameEl.textContent = folder.name;
+
+    const countEl = document.createElement('span');
+    countEl.className = 'folder-header-count';
+    countEl.textContent = '(' + docCount + ')';
+
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'folder-header-menu-btn';
+    menuBtn.setAttribute('aria-label', 'Options for folder ' + folder.name);
+    menuBtn.textContent = '⋮';
+    menuBtn.addEventListener('click', e => { e.stopPropagation(); openFolderActionSheet(folder.id); });
+
+    hdr.appendChild(icon);
+    hdr.appendChild(nameEl);
+    hdr.appendChild(countEl);
+    hdr.appendChild(menuBtn);
+    return hdr;
+  }
+
   window.renderDocuments = async function () {
     revokeListURLs();
     listContainer.innerHTML = '';
-    const docs = App.state.documents;
-    if (!docs.length) {
+    const docs    = App.state.documents;
+    const folders = App.state.folders || [];
+
+    const hasDocs    = docs.length > 0;
+    const hasFolders = folders.length > 0;
+
+    if (!hasDocs && !hasFolders) {
       listEmpty.hidden = false;
       return;
     }
     listEmpty.hidden = true;
 
-    for (const doc of docs) {
-      const card = document.createElement('div');
-      card.className = 'doc-card';
-      card.setAttribute('role', 'listitem');
-      card.dataset.docId = doc.id;
+    const thumbJobs = [];
 
-      const firstPageId = doc.pageIds[0];
-      if (firstPageId) {
-        const thumb = document.createElement('img');
-        thumb.className = 'doc-card-thumb';
-        thumb.alt = '';
-        const blob = await DB.loadBlob(firstPageId + ':thumb');
-        if (blob) {
-          const u = URL.createObjectURL(blob);
-          _listURLs.push(u);
-          thumb.src = u;
-          // Apply stored rotation
-          const page = App.state.pages[firstPageId];
-          if (page && page.rotation) thumb.style.transform = `rotate(${page.rotation}deg)`;
-        }
-        card.appendChild(thumb);
-      } else {
-        const ph = document.createElement('div');
-        ph.className = 'doc-card-thumb-placeholder';
-        ph.textContent = '📄';
-        card.appendChild(ph);
-      }
-
-      const info = document.createElement('div');
-      info.className = 'doc-card-info';
-      const title = document.createElement('div');
-      title.className = 'doc-card-title';
-      title.textContent = doc.title || 'Untitled';
-      const meta = document.createElement('div');
-      meta.className = 'doc-card-meta';
-      const pc = doc.pageIds.length;
-      meta.textContent = pc + ' page' + (pc === 1 ? '' : 's') +
-        (doc.date ? '  ·  ' + doc.date : '');
-      info.appendChild(title);
-      info.appendChild(meta);
-      card.appendChild(info);
-
-      card.addEventListener('click', () => openDocDetail(doc.id));
-      listContainer.appendChild(card);
+    // Map docId → folder for quick lookup
+    const docFolder = new Map();
+    for (const f of folders) {
+      for (const id of f.documentIds) docFolder.set(id, f.id);
     }
+    const unfiledDocs = docs.filter(d => !docFolder.has(d.id));
+
+    // Render each folder section
+    for (const folder of folders) {
+      const folderDocs = folder.documentIds
+        .map(id => docs.find(d => d.id === id))
+        .filter(Boolean);
+
+      listContainer.appendChild(buildFolderHeader(folder, folderDocs.length));
+
+      for (const doc of folderDocs) {
+        const { card, thumbJob } = buildDocCard(doc, /* indented */ true);
+        listContainer.appendChild(card);
+        if (thumbJob) thumbJobs.push(thumbJob);
+      }
+    }
+
+    // Unfiled section header (only shown when folders exist)
+    if (hasFolders && unfiledDocs.length) {
+      const divider = document.createElement('div');
+      divider.className = 'folder-divider';
+      divider.textContent = 'Unfiled';
+      listContainer.appendChild(divider);
+    }
+
+    for (const doc of unfiledDocs) {
+      const { card, thumbJob } = buildDocCard(doc, /* indented */ false);
+      listContainer.appendChild(card);
+      if (thumbJob) thumbJobs.push(thumbJob);
+    }
+
+    // Load all thumbnails concurrently
+    await Promise.all(thumbJobs.map(async ({ img, pageId }) => {
+      const blob = await DB.loadBlob(pageId + ':thumb');
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        _listURLs.push(url);
+        img.src = url;
+      }
+    }));
   };
 
   // ── New document ─────────────────────────────────────────────────────────
@@ -1560,6 +1704,16 @@ async function renderInbox() {
     DB.saveState(App.state);
     renderDocuments();
     openDocDetail(App.state.documents[App.state.documents.length - 1].id);
+  });
+
+  // ── New folder ────────────────────────────────────────────────────────────
+
+  fabNewFolder.addEventListener('click', () => {
+    const name = prompt('Folder name:');
+    if (!name || !name.trim()) return;
+    App.state = Core.addFolder(App.state, { name: name.trim() });
+    DB.saveState(App.state);
+    renderDocuments();
   });
 
   // ── Document detail ──────────────────────────────────────────────────────
@@ -1580,7 +1734,7 @@ async function renderInbox() {
     window._currentDocId = docId;
     listView.hidden = true;
     detailView.hidden = false;
-    fabNewDoc.hidden = true;
+    if (typeof window.updateFabVisibility === 'function') window.updateFabVisibility();
     renderCurrentDoc();
   }
 
@@ -1588,13 +1742,183 @@ async function renderInbox() {
     revokeDetailURLs();
     detailView.hidden = true;
     listView.hidden = false;
-    fabNewDoc.hidden = false;
+    if (typeof window.updateFabVisibility === 'function') window.updateFabVisibility();
     _currentDocId = null;
     window._currentDocId = null;
     renderDocuments();
   }
 
   btnBack.addEventListener('click', closeDocDetail);
+
+  // ── Document action sheet (from doc card ⋮) ─────────────────────────────
+
+  let _actionDocId = null;
+  const docActionBackdrop      = document.getElementById('doc-action-backdrop');
+  const docActionSheet         = document.getElementById('doc-action-sheet');
+  const docActionMoveToFolder  = document.getElementById('doc-action-move-to-folder');
+
+  function openDocActionSheet(docId) {
+    _actionDocId = docId;
+    // Show "Move to folder" only if folders exist
+    docActionMoveToFolder.hidden = !(App.state.folders || []).length;
+    docActionBackdrop.hidden = false;
+    docActionSheet.hidden    = false;
+  }
+
+  function closeDocActionSheet() {
+    docActionBackdrop.hidden = true;
+    docActionSheet.hidden    = true;
+    _actionDocId = null;
+  }
+
+  docActionBackdrop.addEventListener('click', closeDocActionSheet);
+
+  docActionMoveToFolder.addEventListener('click', () => {
+    const docId = _actionDocId;
+    closeDocActionSheet();
+    if (docId) openMoveFolderSheet(docId);
+  });
+
+  document.getElementById('doc-action-delete').addEventListener('click', async () => {
+    const docId = _actionDocId;
+    closeDocActionSheet();
+    if (!docId) return;
+
+    const prevState = App.state;
+    App.state = Core.deleteDocument(App.state, docId);
+    await DB.saveState(App.state);
+    renderDocuments();
+
+    showUndo('Document deleted.', async () => {
+      App.state = prevState;
+      await DB.saveState(App.state);
+      renderDocuments();
+    });
+  });
+
+  // ── Folder action sheet (from folder header ⋮) ───────────────────────────
+
+  let _actionFolderId = null;
+  const folderActionBackdrop = document.getElementById('folder-action-backdrop');
+  const folderActionSheet    = document.getElementById('folder-action-sheet');
+
+  function openFolderActionSheet(folderId) {
+    _actionFolderId = folderId;
+    folderActionBackdrop.hidden = false;
+    folderActionSheet.hidden    = false;
+  }
+
+  function closeFolderActionSheet() {
+    folderActionBackdrop.hidden = true;
+    folderActionSheet.hidden    = true;
+    _actionFolderId = null;
+  }
+
+  folderActionBackdrop.addEventListener('click', closeFolderActionSheet);
+
+  document.getElementById('folder-action-rename').addEventListener('click', () => {
+    const folderId = _actionFolderId;
+    closeFolderActionSheet();
+    if (!folderId) return;
+    const folder = (App.state.folders || []).find(f => f.id === folderId);
+    const newName = prompt('Rename folder:', folder ? folder.name : '');
+    if (!newName || !newName.trim()) return;
+    App.state = Core.renameFolder(App.state, folderId, newName.trim());
+    DB.saveState(App.state);
+    renderDocuments();
+  });
+
+  document.getElementById('folder-action-delete').addEventListener('click', async () => {
+    const folderId = _actionFolderId;
+    closeFolderActionSheet();
+    if (!folderId) return;
+
+    const prevState = App.state;
+    App.state = Core.deleteFolder(App.state, folderId);
+    await DB.saveState(App.state);
+    renderDocuments();
+
+    showUndo('Folder deleted. Documents are now unfiled.', async () => {
+      App.state = prevState;
+      await DB.saveState(App.state);
+      renderDocuments();
+    });
+  });
+
+  // ── Move-to-folder picker sheet ──────────────────────────────────────────
+
+  let _moveFolderDocId = null;
+  const moveFolderBackdrop = document.getElementById('move-folder-backdrop');
+  const moveFolderSheet    = document.getElementById('move-folder-sheet');
+  const moveFolderOptions  = document.getElementById('move-folder-options');
+
+  function openMoveFolderSheet(docId) {
+    _moveFolderDocId = docId;
+    moveFolderOptions.innerHTML = '';
+
+    const folders = App.state.folders || [];
+    const currentFolderId = (folders.find(f => f.documentIds.includes(docId)) || {}).id || null;
+
+    for (const folder of folders) {
+      const btn = document.createElement('button');
+      btn.className = 'action-item' + (folder.id === currentFolderId ? ' active' : '');
+      const icon = document.createElement('span');
+      icon.className = 'action-item-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '📁';
+      btn.appendChild(icon);
+      btn.appendChild(document.createTextNode(folder.name));
+      if (folder.id === currentFolderId) {
+        const check = document.createElement('span');
+        check.style.cssText = 'margin-left:auto;font-size:16px;';
+        check.textContent = '✓';
+        check.setAttribute('aria-hidden', 'true');
+        btn.appendChild(check);
+      }
+      btn.addEventListener('click', async () => {
+        closeMoveFolderSheet();
+        App.state = Core.moveDocumentToFolder(App.state, docId, folder.id);
+        await DB.saveState(App.state);
+        renderDocuments();
+      });
+      moveFolderOptions.appendChild(btn);
+    }
+
+    // "Unfiled" option
+    const unfiledBtn = document.createElement('button');
+    unfiledBtn.className = 'action-item' + (currentFolderId === null ? ' active' : '');
+    const unfiledIcon = document.createElement('span');
+    unfiledIcon.className = 'action-item-icon';
+    unfiledIcon.setAttribute('aria-hidden', 'true');
+    unfiledIcon.textContent = '📄';
+    unfiledBtn.appendChild(unfiledIcon);
+    unfiledBtn.appendChild(document.createTextNode('Unfiled'));
+    if (currentFolderId === null) {
+      const check = document.createElement('span');
+      check.style.cssText = 'margin-left:auto;font-size:16px;';
+      check.textContent = '✓';
+      check.setAttribute('aria-hidden', 'true');
+      unfiledBtn.appendChild(check);
+    }
+    unfiledBtn.addEventListener('click', async () => {
+      closeMoveFolderSheet();
+      App.state = Core.moveDocumentToFolder(App.state, docId, null);
+      await DB.saveState(App.state);
+      renderDocuments();
+    });
+    moveFolderOptions.appendChild(unfiledBtn);
+
+    moveFolderBackdrop.hidden = false;
+    moveFolderSheet.hidden    = false;
+  }
+
+  function closeMoveFolderSheet() {
+    moveFolderBackdrop.hidden = true;
+    moveFolderSheet.hidden    = true;
+    _moveFolderDocId = null;
+  }
+
+  moveFolderBackdrop.addEventListener('click', closeMoveFolderSheet);
 
   window.renderCurrentDoc = async function () {
     if (!_currentDocId) return;
@@ -2341,16 +2665,8 @@ async function renderInbox() {
     }
 
     if (files.length) {
-      // Switch to Inbox and import
-      document.querySelectorAll('.nav-btn').forEach(b => {
-        const isInbox = b.dataset.screen === 'inbox';
-        b.classList.toggle('active', isInbox);
-        b.setAttribute('aria-current', isInbox ? 'page' : 'false');
-      });
-      document.querySelectorAll('.screen').forEach(s => {
-        s.classList.toggle('active', s.id === 'screen-inbox');
-      });
-      document.getElementById('btn-new-doc').hidden = true;
+      // Import to inbox state, then stay on the documents screen
+      if (typeof window.showScreen === 'function') window.showScreen('documents');
       await handleImport(files);
     }
   }

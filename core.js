@@ -13,14 +13,15 @@ const Core = {
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
   },
 
-  /** Returns a fresh empty state at schemaVersion 1. */
+  /** Returns a fresh empty state at schemaVersion 2. */
   createState() {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       app: 'docsorter',
       updatedAt: new Date().toISOString(),
       pages: {},
       documents: [],
+      folders: [],
       inbox: [],
       categories: [...this.DEFAULT_CATEGORIES],
     };
@@ -56,6 +57,22 @@ const Core = {
       category,
       date,
       pageIds: [...pageIds],
+      createdAt: now,
+      updatedAt: now,
+    };
+  },
+
+  /**
+   * Returns a new Folder object with a generated ID.
+   * @param {object} [fields]
+   * @param {string} [fields.name='New folder']
+   */
+  createFolder({ name = 'New folder' } = {}) {
+    const now = new Date().toISOString();
+    return {
+      id: this.generateId(),
+      name: typeof name === 'string' && name.trim() ? name.trim() : 'New folder',
+      documentIds: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -133,6 +150,20 @@ const Core = {
       }
     }
 
+    const docIdSet       = new Set(docs.map(d => d.id));
+    const seenInFolders  = new Set();
+    for (const folder of (state.folders || [])) {
+      for (const docId of (folder.documentIds || [])) {
+        if (!docIdSet.has(docId)) {
+          errors.push(`folder "${folder.id}" references unknown docId "${docId}"`);
+        }
+        if (seenInFolders.has(docId)) {
+          errors.push(`docId "${docId}" appears in more than one folder`);
+        }
+        seenInFolders.add(docId);
+      }
+    }
+
     return errors;
   },
 
@@ -154,14 +185,22 @@ const Core = {
 
   /**
    * Runs schema migrations on a state loaded from storage.
-   * Returns the state at schemaVersion 1 (current).
+   * Returns the state at schemaVersion 2 (current).
    * Throws if the version is unrecognised.
    * @param {object} state
    */
   applyMigrations(state) {
-    const v = state && state.schemaVersion;
-    if (v === 1) return state;
-    throw new Error(`Unsupported schemaVersion: ${v}`);
+    let s = state;
+    const v = s && s.schemaVersion;
+    if (v === undefined || v === null || (typeof v !== 'number' && typeof v !== 'string')) {
+      throw new Error(`Unsupported schemaVersion: ${v}`);
+    }
+    // v1 → v2: add folders array
+    if (s.schemaVersion === 1) {
+      s = { ...s, schemaVersion: 2, folders: [] };
+    }
+    if (s.schemaVersion === 2) return s;
+    throw new Error(`Unsupported schemaVersion: ${s.schemaVersion}`);
   },
 
   /**
@@ -471,6 +510,114 @@ const Core = {
       ...state,
       updatedAt: new Date().toISOString(),
       categories: [...state.categories, cat],
+    };
+  },
+
+  /**
+   * Removes a document and all its pages from state.
+   * Also removes the document from any folder it belongs to.
+   * Caller is responsible for deleting associated blobs from IndexedDB.
+   * @param {object} state
+   * @param {string} docId
+   */
+  deleteDocument(state, docId) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`deleteDocument: docId "${docId}" not found`);
+    const pages = { ...state.pages };
+    for (const pageId of doc.pageIds) {
+      delete pages[pageId];
+    }
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      pages,
+      documents: state.documents.filter(d => d.id !== docId),
+      folders: (state.folders || []).map(f =>
+        f.documentIds.includes(docId)
+          ? { ...f, documentIds: f.documentIds.filter(id => id !== docId) }
+          : f
+      ),
+    };
+  },
+
+  /**
+   * Adds a new folder to state.folders.
+   * @param {object} state
+   * @param {object} [fields] - passed to createFolder()
+   */
+  addFolder(state, fields) {
+    const folder = this.createFolder(fields);
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      folders: [...(state.folders || []), folder],
+    };
+  },
+
+  /**
+   * Renames a folder.
+   * @param {object} state
+   * @param {string} folderId
+   * @param {string} name
+   */
+  renameFolder(state, folderId, name) {
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new Error('renameFolder: name must be a non-empty string');
+    }
+    const folder = (state.folders || []).find(f => f.id === folderId);
+    if (!folder) throw new Error(`renameFolder: folderId "${folderId}" not found`);
+    const now = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt: now,
+      folders: (state.folders || []).map(f =>
+        f.id === folderId ? { ...f, name: name.trim(), updatedAt: now } : f
+      ),
+    };
+  },
+
+  /**
+   * Removes a folder. Documents that were in it become unfiled.
+   * @param {object} state
+   * @param {string} folderId
+   */
+  deleteFolder(state, folderId) {
+    const folder = (state.folders || []).find(f => f.id === folderId);
+    if (!folder) throw new Error(`deleteFolder: folderId "${folderId}" not found`);
+    return {
+      ...state,
+      updatedAt: new Date().toISOString(),
+      folders: (state.folders || []).filter(f => f.id !== folderId),
+    };
+  },
+
+  /**
+   * Moves a document to a folder, or makes it unfiled (folderId = null).
+   * Removes the document from any other folder it was previously in.
+   * @param {object} state
+   * @param {string} docId
+   * @param {string|null} folderId - null means unfiled
+   */
+  moveDocumentToFolder(state, docId, folderId) {
+    const doc = state.documents.find(d => d.id === docId);
+    if (!doc) throw new Error(`moveDocumentToFolder: docId "${docId}" not found`);
+    if (folderId !== null) {
+      const folder = (state.folders || []).find(f => f.id === folderId);
+      if (!folder) throw new Error(`moveDocumentToFolder: folderId "${folderId}" not found`);
+    }
+    const now = new Date().toISOString();
+    const folders = (state.folders || []).map(f => {
+      const hadDoc = f.documentIds.includes(docId);
+      const isTarget = f.id === folderId;
+      if (!hadDoc && !isTarget) return f;
+      const withoutDoc = f.documentIds.filter(id => id !== docId);
+      const newIds = isTarget ? [...withoutDoc, docId] : withoutDoc;
+      return { ...f, documentIds: newIds, updatedAt: now };
+    });
+    return {
+      ...state,
+      updatedAt: now,
+      folders,
     };
   },
 

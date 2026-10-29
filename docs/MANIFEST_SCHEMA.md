@@ -1,6 +1,6 @@
 # Manifest Schema
 
-## Current schema version: 1
+## Current schema version: 2
 
 Canonical definition of the DocSorter state format.
 Applies to both the in-memory state (IndexedDB `state` store) and the project bundle (ZIP file).
@@ -9,12 +9,13 @@ Applies to both the in-memory state (IndexedDB `state` store) and the project bu
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schemaVersion` | integer | Schema version. Current: 1. |
+| `schemaVersion` | integer | Schema version. Current: 2. |
 | `app` | string | Always `"docsorter"`. |
 | `updatedAt` | ISO 8601 string | Timestamp of last modification. |
 | `pages` | object | Map of `pageId → Page`. |
 | `documents` | array | Ordered list of Document objects. |
 | `inbox` | array | pageIds of pages not yet assigned to a document. |
+| `folders` | array | Ordered list of Folder objects. Empty array if no folders created. |
 | `categories` | array | Available category strings. Default: `["Medical","Finance","Insurance","Home","Work","Other"]`. |
 
 ## Page object
@@ -61,8 +62,19 @@ DocSorter_{YYYYMMDD}_{HHMMSS}.zip
 
 `{basename}` is `{YYYYMMDD}_{Category}_{TitlePascalCase}` (see §8 of instructions.md).
 
+## Folder object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique folder ID. |
+| `name` | string | User-given folder name. |
+| `documentIds` | array | Ordered list of document IDs in this folder. A document appears in at most one folder; documents absent from all folders are "unfiled". |
+| `createdAt` | ISO 8601 string | When the folder was created. |
+| `updatedAt` | ISO 8601 string | When the folder was last modified. |
+
 ## Migration history
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2 | 2026-10-29 | Added `folders` array. Migration from v1: add `folders: []`. |
 | 1 | 2026-09-27 | Initial schema |
